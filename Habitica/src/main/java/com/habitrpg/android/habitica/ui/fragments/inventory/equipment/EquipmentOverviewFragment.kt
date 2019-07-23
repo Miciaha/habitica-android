@@ -5,8 +5,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.InventoryRepository
+import com.habitrpg.android.habitica.helpers.MainNavigationController
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.ui.fragments.BaseMainFragment
 import io.reactivex.functions.Consumer
@@ -91,7 +92,7 @@ class EquipmentOverviewFragment : BaseMainFragment() {
         super.onDestroy()
     }
 
-    override fun injectFragment(component: AppComponent) {
+    override fun injectFragment(component: UserComponent) {
         component.inject(this)
     }
 
@@ -116,17 +117,7 @@ class EquipmentOverviewFragment : BaseMainFragment() {
     }
 
     private fun displayEquipmentDetailList(type: String, equipped: String?, isCostume: Boolean?) {
-        val fragment = EquipmentDetailFragment()
-        fragment.type = type
-        fragment.isCostume = isCostume
-        fragment.equippedGear = equipped
-        activity?.displayFragment(fragment)
-    }
-
-    override fun customTitle(): String {
-        return if (!isAdded) {
-            ""
-        } else getString(R.string.sidebar_equipment)
+        MainNavigationController.navigate(EquipmentOverviewFragmentDirections.openEquipmentDetail(type, isCostume ?: false, equipped ?: ""))
     }
 
 }

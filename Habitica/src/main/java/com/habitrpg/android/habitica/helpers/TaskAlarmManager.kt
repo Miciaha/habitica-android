@@ -6,31 +6,19 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Build.VERSION.SDK_INT
-import android.support.v7.preference.PreferenceManager
+import androidx.core.content.edit
+import androidx.preference.PreferenceManager
 import com.habitrpg.android.habitica.data.TaskRepository
-import com.habitrpg.android.habitica.events.ReminderDeleteEvent
 import com.habitrpg.android.habitica.models.tasks.RemindersItem
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.receivers.NotificationPublisher
 import com.habitrpg.android.habitica.receivers.TaskReceiver
 import io.reactivex.Flowable
 import io.reactivex.functions.Consumer
-import org.greenrobot.eventbus.EventBus
-import org.greenrobot.eventbus.Subscribe
 import java.util.*
 
 class TaskAlarmManager(private var context: Context, private var taskRepository: TaskRepository, private var userId: String) {
     private val am: AlarmManager? = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-
-    init {
-        EventBus.getDefault().register(this)
-    }
-
-    @Subscribe
-    fun onEvent(event: ReminderDeleteEvent) {
-        val remindersItem = event.reminder
-        this.removeAlarmForRemindersItem(remindersItem)
-    }
 
     private fun setAlarmsForTask(task: Task) {
         task.reminders?.let {
@@ -43,7 +31,6 @@ class TaskAlarmManager(private var context: Context, private var taskRepository:
                 this.setAlarmForRemindersItem(task, currentReminder)
             }
         }
-
     }
 
     private fun removeAlarmsForTask(task: Task) {
@@ -74,9 +61,9 @@ class TaskAlarmManager(private var context: Context, private var taskRepository:
         if (!preventDailyReminder) {
             scheduleDailyReminder(context)
         }
-        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
-        editor.putLong("lastReminderSchedule", Date().time)
-        editor.apply()
+        PreferenceManager.getDefaultSharedPreferences(context).edit {
+            putLong("lastReminderSchedule", Date().time)
+        }
     }
 
     fun scheduleAlarmsForTask(task: Task) {
@@ -128,9 +115,9 @@ class TaskAlarmManager(private var context: Context, private var taskRepository:
         intent.action = remindersItem.id
         val intentId = remindersItem.id?.hashCode() ?: 0 and 0xfffffff
         val sender = PendingIntent.getBroadcast(context, intentId, intent, PendingIntent.FLAG_UPDATE_CURRENT)
-        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
         sender.cancel()
-        am.cancel(sender)
+        am?.cancel(sender)
     }
 
     companion object {

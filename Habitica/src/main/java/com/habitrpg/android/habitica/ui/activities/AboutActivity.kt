@@ -1,14 +1,14 @@
 package com.habitrpg.android.habitica.ui.activities
 
 import android.os.Bundle
-import android.support.design.widget.TabLayout
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentManager
-import android.support.v4.app.FragmentStatePagerAdapter
-import android.support.v4.view.ViewPager
+import com.google.android.material.tabs.TabLayout
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentStatePagerAdapter
+import androidx.viewpager.widget.ViewPager
 import android.view.MenuItem
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.ui.fragments.AboutFragment
 import com.habitrpg.android.habitica.ui.helpers.bindView
 import com.mikepenz.aboutlibraries.Libs
@@ -61,7 +61,7 @@ class AboutActivity : BaseActivity() {
         tabLayout.setupWithViewPager(pager)
     }
 
-    override fun injectActivity(component: AppComponent?) {
+    override fun injectActivity(component: UserComponent?) {
         component?.inject(this)
     }
 
@@ -82,7 +82,7 @@ class AboutActivity : BaseActivity() {
 
     private inner class PagerAdapter(fm: FragmentManager, internal var mNumOfTabs: Int) : FragmentStatePagerAdapter(fm) {
 
-        override fun getItem(position: Int): Fragment? {
+        override fun getItem(position: Int): Fragment {
             return when (position) {
                 0 -> AboutFragment()
                 1 -> LibsBuilder()
@@ -96,7 +96,7 @@ class AboutActivity : BaseActivity() {
                         .withAboutVersionShownCode(true)
                         .withAboutVersionShownName(true)
                         .supportFragment()
-                else -> null
+                else -> Fragment()
             }
         }
 

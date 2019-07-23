@@ -4,9 +4,10 @@ import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
-import android.support.v7.app.AppCompatActivity
-import android.support.v7.preference.PreferenceManager
+import androidx.appcompat.app.AppCompatActivity
+import androidx.preference.PreferenceManager
 import android.widget.Button
+import androidx.core.content.edit
 import com.habitrpg.android.habitica.R
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.ui.helpers.bindView
@@ -74,8 +75,8 @@ class AddTaskWidgetActivity : AppCompatActivity() {
     }
 
     private fun storeSelectedTaskType(selectedTaskType: String) {
-        val preferences = PreferenceManager.getDefaultSharedPreferences(this).edit()
-        preferences.putString("add_task_widget_$widgetId", selectedTaskType)
-        preferences.apply()
+        PreferenceManager.getDefaultSharedPreferences(this).edit {
+            putString("add_task_widget_$widgetId", selectedTaskType)
+        }
     }
 }

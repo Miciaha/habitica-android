@@ -7,9 +7,9 @@ import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
 import android.os.Build
-import android.support.annotation.CallSuper
-import android.support.annotation.RequiresApi
-import android.support.v4.app.NotificationCompat
+import androidx.annotation.CallSuper
+import androidx.annotation.RequiresApi
+import androidx.core.app.NotificationCompat
 
 import com.habitrpg.android.habitica.R
 import com.habitrpg.android.habitica.ui.activities.MainActivity
@@ -77,7 +77,7 @@ abstract class HabiticaLocalNotification(protected var context: Context, protect
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
-public fun NotificationManager.createOrUpdateHabiticaChannel() {
+fun NotificationManager.createOrUpdateHabiticaChannel() {
     var hasChannel = false
     for (channel in notificationChannels) {
         if (channel.id == "default") {

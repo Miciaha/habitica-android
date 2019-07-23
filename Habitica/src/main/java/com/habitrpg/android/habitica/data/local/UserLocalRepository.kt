@@ -1,5 +1,7 @@
 package com.habitrpg.android.habitica.data.local
 
+import com.habitrpg.android.habitica.models.Achievement
+import com.habitrpg.android.habitica.models.QuestAchievement
 import com.habitrpg.android.habitica.models.Skill
 import com.habitrpg.android.habitica.models.TutorialStep
 import com.habitrpg.android.habitica.models.social.ChatMessage
@@ -20,8 +22,7 @@ interface UserLocalRepository : BaseLocalRepository {
     fun getSkills(user: User): Flowable<RealmResults<Skill>>
 
     fun getSpecialItems(user: User): Flowable<RealmResults<Skill>>
-
-    fun getInboxMessages(userId: String, replyToUserID: String?): Flowable<RealmResults<ChatMessage>>
-
-    fun getInboxOverviewList(userId: String): Flowable<RealmResults<ChatMessage>>
+    fun getAchievements(): Flowable<RealmResults<Achievement>>
+    fun getQuestAchievements(userID: String): Flowable<RealmResults<QuestAchievement>>
+    fun getIsUserOnQuest(userID: String): Flowable<Boolean>
 }

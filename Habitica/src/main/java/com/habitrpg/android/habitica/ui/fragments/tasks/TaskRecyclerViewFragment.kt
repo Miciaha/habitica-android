@@ -1,43 +1,49 @@
 package com.habitrpg.android.habitica.ui.fragments.tasks
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
+import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
-import android.support.v4.widget.SwipeRefreshLayout
-import android.support.v7.widget.LinearLayoutManager
-import android.support.v7.widget.RecyclerView
-import android.support.v7.widget.helper.ItemTouchHelper
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.ItemTouchHelper
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.ApiClient
 import com.habitrpg.android.habitica.data.InventoryRepository
 import com.habitrpg.android.habitica.data.TaskRepository
 import com.habitrpg.android.habitica.data.UserRepository
-import com.habitrpg.android.habitica.events.commands.AddNewTaskCommand
+import com.habitrpg.android.habitica.extensions.setScaledPadding
+import com.habitrpg.android.habitica.extensions.subscribeWithErrorHandler
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
+import com.habitrpg.android.habitica.helpers.SoundManager
 import com.habitrpg.android.habitica.helpers.TaskFilterHelper
+import com.habitrpg.android.habitica.models.responses.TaskDirection
+import com.habitrpg.android.habitica.models.responses.TaskScoringResult
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.models.user.User
 import com.habitrpg.android.habitica.modules.AppModule
 import com.habitrpg.android.habitica.ui.activities.MainActivity
+import com.habitrpg.android.habitica.ui.activities.TaskFormActivity
 import com.habitrpg.android.habitica.ui.adapter.tasks.*
 import com.habitrpg.android.habitica.ui.fragments.BaseFragment
 import com.habitrpg.android.habitica.ui.helpers.SafeDefaultItemAnimator
 import com.habitrpg.android.habitica.ui.viewHolders.tasks.BaseTaskViewHolder
+import com.habitrpg.android.habitica.ui.views.HabiticaIconsHelper
+import com.habitrpg.android.habitica.ui.views.HabiticaSnackbar
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.functions.Consumer
 import kotlinx.android.synthetic.main.fragment_refresh_recyclerview.*
-import org.greenrobot.eventbus.EventBus
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Named
 
-open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, SwipeRefreshLayout.OnRefreshListener {
+open class TaskRecyclerViewFragment : BaseFragment(), androidx.swiperefreshlayout.widget.SwipeRefreshLayout.OnRefreshListener {
     var recyclerAdapter: TaskRecyclerViewAdapter? = null
     @field:[Inject Named(AppModule.NAMED_USER_ID)]
     lateinit var userID: String
@@ -51,8 +57,10 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
     lateinit var inventoryRepository: InventoryRepository
     @Inject
     lateinit var taskRepository: TaskRepository
+    @Inject
+    lateinit var soundManager: SoundManager
 
-    internal var layoutManager: RecyclerView.LayoutManager? = null
+    internal var layoutManager: androidx.recyclerview.widget.RecyclerView.LayoutManager? = null
 
     internal var classType: String? = null
     internal var user: User? = null
@@ -63,7 +71,7 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
 
     // TODO needs a bit of cleanup
     private fun setInnerAdapter() {
-        val adapter: RecyclerView.Adapter<*>? = when (this.classType) {
+        val adapter: androidx.recyclerview.widget.RecyclerView.Adapter<*>? = when (this.classType) {
             Task.TYPE_HABIT -> {
                 HabitsRecyclerViewAdapter(null, true, R.layout.habit_item_card, taskFilterHelper)
             }
@@ -74,7 +82,7 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
                 TodosRecyclerViewAdapter(null, true, R.layout.todo_item_card, taskFilterHelper)
             }
             Task.TYPE_REWARD -> {
-                RewardsRecyclerViewAdapter(null, context, R.layout.reward_item_card, user)
+                RewardsRecyclerViewAdapter(null, R.layout.reward_item_card, user)
             }
             else -> null
         }
@@ -86,15 +94,37 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
         recyclerAdapter = adapter as? TaskRecyclerViewAdapter
         recyclerView.adapter = adapter
 
-        recyclerAdapter?.errorButtonEvents?.subscribe(Consumer {
-            taskRepository.syncErroredTasks().subscribe(Consumer {}, RxErrorHandler.handleEmptyError())
-        }, RxErrorHandler.handleEmptyError())
-
         if (this.classType != null) {
-            taskRepository.getTasks(this.classType ?: "", userID).firstElement().subscribe(Consumer { this.recyclerAdapter?.updateUnfilteredData(it)
+            compositeSubscription.add(taskRepository.getTasks(this.classType ?: "", userID).firstElement().subscribe(Consumer {
+                this.recyclerAdapter?.updateUnfilteredData(it)
                 this.recyclerAdapter?.filter()
-            }, RxErrorHandler.handleEmptyError())
+            }, RxErrorHandler.handleEmptyError()))
         }
+    }
+
+    private fun handleTaskResult(result: TaskScoringResult, value: Int) {
+        if (classType == Task.TYPE_REWARD) {
+            (activity as? MainActivity)?.let { activity ->
+                HabiticaSnackbar.showSnackbar(activity.snackbarContainer, null, getString(R.string.notification_purchase_reward),
+                        BitmapDrawable(resources, HabiticaIconsHelper.imageOfGold()),
+                        ContextCompat.getColor(activity, R.color.yellow_10),
+                        "-$value",
+                        HabiticaSnackbar.SnackbarDisplayType.DROP)
+            }
+        } else {
+            (activity as? MainActivity)?.displayTaskScoringResponse(result)
+        }
+    }
+
+    private fun playSound(direction: TaskDirection) {
+        val soundName = when (classType) {
+            Task.TYPE_HABIT -> if (direction == TaskDirection.UP) SoundManager.SoundPlusHabit else SoundManager.SoundMinusHabit
+            Task.TYPE_DAILY -> SoundManager.SoundDaily
+            Task.TYPE_TODO -> SoundManager.SoundTodo
+            Task.TYPE_REWARD -> SoundManager.SoundReward
+            else -> null
+        }
+        soundName?.let { soundManager.loadAndPlayAudio(it) }
     }
 
     private fun allowReordering() {
@@ -117,7 +147,7 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
             private var fromPosition: Int? = null
             private var movingTaskID: String? = null
 
-            override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+            override fun onSelectedChanged(viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder?, actionState: Int) {
                 super.onSelectedChanged(viewHolder, actionState)
                 if (viewHolder != null) {
                     viewHolder.itemView.setBackgroundColor(Color.LTGRAY)
@@ -131,17 +161,17 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
                 refreshLayout.isEnabled = false
             }
 
-            override fun onMove(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
+            override fun onMove(recyclerView: androidx.recyclerview.widget.RecyclerView, viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder, target: androidx.recyclerview.widget.RecyclerView.ViewHolder): Boolean {
                 recyclerAdapter?.notifyItemMoved(viewHolder.adapterPosition, target.adapterPosition)
                 //taskRepository.swapTaskPosition(viewHolder.getAdapterPosition(), target.getAdapterPosition());
                 return true
             }
 
-            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
+            override fun onSwiped(viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder, direction: Int) {}
 
             //defines the enabled move directions in each state (idle, swiping, dragging).
-            override fun getMovementFlags(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int {
-                return ItemTouchHelper.Callback.makeFlag(ItemTouchHelper.ACTION_STATE_DRAG,
+            override fun getMovementFlags(recyclerView: androidx.recyclerview.widget.RecyclerView, viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder): Int {
+                return makeFlag(ItemTouchHelper.ACTION_STATE_DRAG,
                         ItemTouchHelper.DOWN or ItemTouchHelper.UP)
             }
 
@@ -149,7 +179,7 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
 
             override fun isLongPressDragEnabled(): Boolean = true
 
-            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+            override fun clearView(recyclerView: androidx.recyclerview.widget.RecyclerView, viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder) {
                 super.clearView(recyclerView, viewHolder)
                 refreshLayout?.isEnabled = true
 
@@ -157,11 +187,11 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
                 val movingTaskID = movingTaskID
                 if (fromPosition != null && movingTaskID != null) {
                     recyclerAdapter?.ignoreUpdates = true
-                    taskRepository.updateTaskPosition(classType ?: "", movingTaskID, viewHolder.adapterPosition)
+                    compositeSubscription.add(taskRepository.updateTaskPosition(classType ?: "", movingTaskID, viewHolder.adapterPosition)
                             .delay(1, TimeUnit.SECONDS)
                             .observeOn(AndroidSchedulers.mainThread())
                             .subscribe(Consumer { recyclerAdapter?.ignoreUpdates = false
-                            recyclerAdapter?.notifyDataSetChanged()}, RxErrorHandler.handleEmptyError())
+                            recyclerAdapter?.notifyDataSetChanged()}, RxErrorHandler.handleEmptyError()))
                 }
                 this.fromPosition = null
                 this.movingTaskID = null
@@ -174,7 +204,7 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
         return inflater.inflate(R.layout.fragment_refresh_recyclerview, container, false)
     }
 
-    protected open fun getLayoutManager(context: Context?): LinearLayoutManager = LinearLayoutManager(context)
+    protected open fun getLayoutManager(context: Context?): androidx.recyclerview.widget.LinearLayoutManager = androidx.recyclerview.widget.LinearLayoutManager(context)
 
     override fun onDestroy() {
         userRepository.close()
@@ -182,13 +212,14 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
         super.onDestroy()
     }
 
-    override fun injectFragment(component: AppComponent) {
+    override fun injectFragment(component: UserComponent) {
         component.inject(this)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        recyclerView.adapter = recyclerAdapter as? RecyclerView.Adapter<*>
+        recyclerView.setScaledPadding(context, 0, 0, 0, 48)
+        recyclerView.adapter = recyclerAdapter as? androidx.recyclerview.widget.RecyclerView.Adapter<*>
         recyclerAdapter?.filter()
 
         layoutManager = recyclerView.layoutManager
@@ -201,6 +232,23 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
         if (recyclerView.adapter == null) {
             this.setInnerAdapter()
         }
+        if (this.classType != null) {
+            recyclerAdapter?.errorButtonEvents
+            recyclerAdapter?.errorButtonEvents?.subscribe(Consumer {
+                taskRepository.syncErroredTasks().subscribe(Consumer {}, RxErrorHandler.handleEmptyError())
+            }, RxErrorHandler.handleEmptyError())?.let { compositeSubscription.add(it) }
+            recyclerAdapter?.taskOpenEvents?.subscribeWithErrorHandler(Consumer {
+                openTaskForm(it)
+            })?.let { compositeSubscription.add(it) }
+            recyclerAdapter?.taskScoreEvents
+                    ?.doOnNext { playSound(it.second) }
+                    ?.flatMap { taskRepository.taskChecked(user, it.first, it.second == TaskDirection.UP, false) { result ->
+                        handleTaskResult(result, it.first.value.toInt())
+                    }}?.subscribeWithErrorHandler(Consumer {})?.let { compositeSubscription.add(it) }
+            recyclerAdapter?.checklistItemScoreEvents
+                    ?.flatMap { taskRepository.scoreChecklistItem(it.first.id ?: "", it.second.id ?: "")
+                    }?.subscribeWithErrorHandler(Consumer {})?.let { compositeSubscription.add(it) }
+        }
 
         val bottomPadding = (recyclerView.paddingBottom + TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 60f, resources.displayMetrics)).toInt()
         recyclerView.setPadding(0, 0, 0, bottomPadding)
@@ -208,11 +256,11 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
 
         refreshLayout.setOnRefreshListener(this)
 
-        recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+        recyclerView.addOnScrollListener(object : androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: androidx.recyclerview.widget.RecyclerView, newState: Int) {
                 super.onScrollStateChanged(recyclerView, newState)
-                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                    refreshLayout?.isEnabled = (activity as MainActivity).isAppBarExpanded
+                if (newState == androidx.recyclerview.widget.RecyclerView.SCROLL_STATE_IDLE) {
+                    refreshLayout?.isEnabled = (activity as? MainActivity)?.isAppBarExpanded ?: false
                 }
             }
         })
@@ -248,22 +296,15 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
         outState.putString(CLASS_TYPE_KEY, this.classType)
     }
 
-    override fun onClick(v: View) {
-        val event = AddNewTaskCommand()
-        event.taskType = this.classType
-
-        EventBus.getDefault().post(event)
-    }
-
     override val displayedClassName: String?
         get() = this.classType + super.displayedClassName
 
     override fun onRefresh() {
         refreshLayout.isRefreshing = true
-        userRepository.retrieveUser(true, true)
+        compositeSubscription.add(userRepository.retrieveUser(true, true)
                 .doOnTerminate {
                     refreshLayout?.isRefreshing = false
-                }.subscribe(Consumer { }, RxErrorHandler.handleEmptyError())
+                }.subscribe(Consumer { }, RxErrorHandler.handleEmptyError()))
     }
 
     fun setActiveFilter(activeFilter: String) {
@@ -272,6 +313,23 @@ open class TaskRecyclerViewFragment : BaseFragment(), View.OnClickListener, Swip
 
         if (activeFilter == Task.FILTER_COMPLETED) {
             compositeSubscription.add(taskRepository.retrieveCompletedTodos(userID).subscribe(Consumer {}, RxErrorHandler.handleEmptyError()))
+        }
+    }
+
+    private fun openTaskForm(task: Task) {
+        if (Date().time - (TasksFragment.lastTaskFormOpen?.time ?: 0) < 2000) {
+            return
+        }
+
+        val bundle = Bundle()
+        bundle.putString(TaskFormActivity.TASK_TYPE_KEY, task.type)
+        bundle.putString(TaskFormActivity.TASK_ID_KEY, task.id)
+
+        val intent = Intent(activity, TaskFormActivity::class.java)
+        intent.putExtras(bundle)
+        TasksFragment.lastTaskFormOpen = Date()
+        if (isAdded) {
+            startActivityForResult(intent, TasksFragment.TASK_UPDATED_RESULT)
         }
     }
 

@@ -1,13 +1,13 @@
 package com.habitrpg.android.habitica.ui.fragments.social
 
 import android.os.Bundle
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentPagerAdapter
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentPagerAdapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.SocialRepository
 import com.habitrpg.android.habitica.models.social.Group
 import com.habitrpg.android.habitica.ui.fragments.BaseMainFragment
@@ -27,8 +27,7 @@ class TavernFragment : BaseMainFragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         this.usesTabLayout = true
-        hideToolbar()
-        disableToolbarScrolling()
+        this.hidesToolbar = true
         super.onCreateView(inflater, container, savedInstanceState)
         val v = inflater.inflate(R.layout.fragment_viewpager, container, false)
         this.tutorialStepIdentifier = "tavern"
@@ -43,18 +42,12 @@ class TavernFragment : BaseMainFragment() {
         viewPager.currentItem = 0
     }
 
-    override fun onDestroyView() {
-        showToolbar()
-        enableToolbarScrolling()
-        super.onDestroyView()
-    }
-
     override fun onDestroy() {
         socialRepository.close()
         super.onDestroy()
     }
 
-    override fun injectFragment(component: AppComponent) {
+    override fun injectFragment(component: UserComponent) {
         component.inject(this)
     }
 
@@ -71,7 +64,7 @@ class TavernFragment : BaseMainFragment() {
                         tavernDetailFragment
                     }
                     1 -> {
-                        chatListFragment.configure(Group.TAVERN_ID, user, true)
+                        chatListFragment.configure(Group.TAVERN_ID, user, true, "tavern")
                         chatListFragment
                     }
                     else -> Fragment()
@@ -96,9 +89,4 @@ class TavernFragment : BaseMainFragment() {
         tabLayout?.setupWithViewPager(viewPager)
     }
 
-    override fun customTitle(): String {
-        return if (!isAdded) {
-            ""
-        } else getString(R.string.sidebar_tavern)
-    }
 }

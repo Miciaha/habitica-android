@@ -1,8 +1,8 @@
 package com.habitrpg.android.habitica.data.implementation
 
 import android.content.Context
-import android.support.v7.app.AlertDialog
 import android.util.Log
+import androidx.appcompat.app.AlertDialog
 import com.amplitude.api.Amplitude
 import com.google.gson.JsonSyntaxException
 import com.habitrpg.android.habitica.BuildConfig
@@ -14,7 +14,7 @@ import com.habitrpg.android.habitica.api.HostConfig
 import com.habitrpg.android.habitica.api.Server
 import com.habitrpg.android.habitica.data.ApiClient
 import com.habitrpg.android.habitica.events.ShowConnectionProblemEvent
-import com.habitrpg.android.habitica.helpers.PopupNotificationsManager
+import com.habitrpg.android.habitica.helpers.NotificationsManager
 import com.habitrpg.android.habitica.models.*
 import com.habitrpg.android.habitica.models.auth.UserAuth
 import com.habitrpg.android.habitica.models.auth.UserAuthResponse
@@ -28,6 +28,7 @@ import com.habitrpg.android.habitica.models.shops.Shop
 import com.habitrpg.android.habitica.models.shops.ShopItem
 import com.habitrpg.android.habitica.models.social.Challenge
 import com.habitrpg.android.habitica.models.social.ChatMessage
+import com.habitrpg.android.habitica.models.social.FindUsernameResult
 import com.habitrpg.android.habitica.models.social.Group
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.models.tasks.TaskList
@@ -60,21 +61,23 @@ import javax.net.ssl.SSLException
 
 class ApiClientImpl//private OnHabitsAPIResult mResultListener;
 //private HostConfig mConfig;
-(private val gsonConverter: GsonConverterFactory, override val hostConfig: HostConfig, private val crashlyticsProxy: CrashlyticsProxy, private val popupNotificationsManager: PopupNotificationsManager, private val context: Context) : Consumer<Throwable>, ApiClient {
-    private val retrofitAdapter: Retrofit
+(private val gsonConverter: GsonConverterFactory, override val hostConfig: HostConfig, private val crashlyticsProxy: CrashlyticsProxy, private val notificationsManager: NotificationsManager, private val context: Context) : Consumer<Throwable>, ApiClient {
+
+
+    private lateinit var retrofitAdapter: Retrofit
 
     // I think we don't need the ApiClientImpl anymore we could just use ApiService
-    private val apiService: ApiService
+    private lateinit var apiService: ApiService
 
     private val apiCallTransformer = FlowableTransformer<HabitResponse<Any>, Any> { observable ->
         observable
                 .filter { it.data != null }
                 .map { habitResponse ->
-            if (habitResponse.notifications != null) {
-                popupNotificationsManager.showNotificationDialog(habitResponse.notifications)
-            }
-            habitResponse.data
-        }
+                    if (habitResponse.notifications != null) {
+                        notificationsManager.setNotifications(habitResponse.notifications)
+                    }
+                    habitResponse.data
+                }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnError(this)
@@ -84,13 +87,16 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
     private var lastAPICallURL: String? = null
 
     init {
-        this.popupNotificationsManager.setApiClient(this)
+        this.notificationsManager.setApiClient(this)
 
-        HabiticaBaseApplication.component?.inject(this)
-        crashlyticsProxy.setUserIdentifier(this.hostConfig.user)
-        crashlyticsProxy.setUserName(this.hostConfig.user)
-        Amplitude.getInstance().userId = this.hostConfig.user
+        HabiticaBaseApplication.userComponent?.inject(this)
+        crashlyticsProxy.setUserIdentifier(this.hostConfig.userID)
+        crashlyticsProxy.setUserName(this.hostConfig.userID)
+        Amplitude.getInstance().userId = this.hostConfig.userID
+        buildRetrofit()
+    }
 
+    fun buildRetrofit() {
         val logging = HttpLoggingInterceptor()
         if (BuildConfig.DEBUG) {
             logging.level = HttpLoggingInterceptor.Level.BODY
@@ -98,17 +104,22 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
 
         val userAgent = System.getProperty("http.agent")
 
+        val calendar = GregorianCalendar()
+        val timeZone = calendar.timeZone
+        val timezoneOffset = -TimeUnit.MINUTES.convert(timeZone.getOffset(calendar.timeInMillis).toLong(), TimeUnit.MILLISECONDS)
+
         val client = OkHttpClient.Builder()
                 .addInterceptor(logging)
                 .addNetworkInterceptor { chain ->
                     val original = chain.request()
                     var builder: Request.Builder = original.newBuilder()
-                    if (this.hostConfig.user != null) {
+                    if (this.hostConfig.hasAuthentication()) {
                         builder = builder
-                                .header("x-api-key", this.hostConfig.api)
-                                .header("x-api-user", this.hostConfig.user)
+                                .header("x-api-key", this.hostConfig.apiKey)
+                                .header("x-api-user", this.hostConfig.userID)
                     }
                     builder = builder.header("x-client", "habitica-android")
+                            .header("x-user-timezoneOffset", timezoneOffset.toString())
                     if (userAgent != null) {
                         builder = builder.header("user-agent", userAgent)
                     }
@@ -121,7 +132,7 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
                     Log.d("NETWORK", lastAPICallURL)
                     chain.proceed(request)
                 }
-                .readTimeout(120, TimeUnit.SECONDS)
+                .readTimeout(2400, TimeUnit.SECONDS)
                 .build()
 
         val server = Server(this.hostConfig.address)
@@ -134,6 +145,13 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
                 .build()
 
         this.apiService = retrofitAdapter.create(ApiService::class.java)
+    }
+
+    override fun updateServerUrl(newAddress: String?) {
+        if (newAddress != null) {
+            hostConfig.address = newAddress
+            buildRetrofit()
+        }
     }
 
     override fun registerUser(username: String, email: String, password: String, confirmPassword: String): Flowable<UserAuthResponse> {
@@ -180,6 +198,10 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
 
             if (error.response().raw().request().url().toString().endsWith("/user/push-devices")) {
                 //workaround for an error that sometimes displays that the user already has this push device
+                return
+            }
+
+            if (status == 404) {
                 return
             }
 
@@ -234,23 +256,20 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
     }
 
     override fun hasAuthenticationKeys(): Boolean {
-        return this.hostConfig.user != null
+        return this.hostConfig.userID.isNotEmpty() && hostConfig.apiKey.isNotEmpty()
     }
 
     private fun showConnectionProblemDialog(resourceMessageString: Int) {
-        showConnectionProblemDialog(R.string.network_error_title, resourceMessageString)
+        showConnectionProblemDialog(null, context.getString(resourceMessageString))
     }
 
     private fun showConnectionProblemDialog(resourceTitleString: Int, resourceMessageString: Int) {
         showConnectionProblemDialog(context.getString(resourceTitleString), context.getString(resourceMessageString))
     }
 
-    private fun showConnectionProblemDialog(resourceTitleString: String, resourceMessageString: String) {
+    private fun showConnectionProblemDialog(resourceTitleString: String?, resourceMessageString: String) {
         val event = ShowConnectionProblemEvent(resourceTitleString, resourceMessageString)
         EventBus.getDefault().post(event)
-        if (BuildConfig.DEBUG) {
-            Log.d(TAG, "showConnectionProblemDialog: $resourceTitleString $resourceMessageString")
-        }
     }
 
     /*
@@ -263,11 +282,11 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
     }
 
     override fun updateAuthenticationCredentials(userID: String?, apiToken: String?) {
-        this.hostConfig.user = userID
-        this.hostConfig.api = apiToken
-        crashlyticsProxy.setUserIdentifier(this.hostConfig.user)
-        crashlyticsProxy.setUserName(this.hostConfig.user)
-        Amplitude.getInstance().userId = this.hostConfig.user
+        this.hostConfig.userID = userID ?: ""
+        this.hostConfig.apiKey = apiToken ?: ""
+        crashlyticsProxy.setUserIdentifier(this.hostConfig.userID)
+        crashlyticsProxy.setUserName(this.hostConfig.userID)
+        Amplitude.getInstance().userId = this.hostConfig.userID
     }
 
     override fun setLanguageCode(languageCode: String) {
@@ -315,7 +334,16 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
     override fun validateSubscription(request: SubscriptionValidationRequest): Flowable<Any> {
         return apiService.validateSubscription(request).map { habitResponse ->
             if (habitResponse.notifications != null) {
-                popupNotificationsManager.showNotificationDialog(habitResponse.notifications)
+                notificationsManager.setNotifications(habitResponse.notifications)
+            }
+            habitResponse.getData()
+        }
+    }
+
+    override fun validateNoRenewSubscription(request: PurchaseValidationRequest): Flowable<Any> {
+        return apiService.validateNoRenewSubscription(request).map { habitResponse ->
+            if (habitResponse.notifications != null) {
+                notificationsManager.setNotifications(habitResponse.notifications)
             }
             habitResponse.getData()
         }
@@ -450,6 +478,10 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         return apiService.getGroup(groupId).compose(configureApiCallObserver())
     }
 
+    override fun createGroup(group: Group): Flowable<Group> {
+        return apiService.createGroup(group).compose(configureApiCallObserver())
+    }
+
     override fun updateGroup(id: String, item: Group): Flowable<Void> {
         return apiService.updateGroup(id, item).compose(configureApiCallObserver())
     }
@@ -473,6 +505,9 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
     override fun deleteMessage(groupId: String, messageId: String): Flowable<Void> {
         return apiService.deleteMessage(groupId, messageId).compose(configureApiCallObserver())
     }
+    override fun deleteInboxMessage(id: String): Flowable<Void> {
+        return apiService.deleteInboxMessage(id).compose(configureApiCallObserver())
+    }
 
     override fun getGroupMembers(groupId: String, includeAllPublicFields: Boolean?): Flowable<List<Member>> {
         return apiService.getGroupMembers(groupId, includeAllPublicFields).compose(configureApiCallObserver())
@@ -486,8 +521,8 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         return apiService.likeMessage(groupId, mid).compose(configureApiCallObserver())
     }
 
-    override fun flagMessage(groupId: String, mid: String): Flowable<Void> {
-        return apiService.flagMessage(groupId, mid).compose(configureApiCallObserver())
+    override fun flagMessage(groupId: String, mid: String, data: MutableMap<String, String>): Flowable<Void> {
+        return apiService.flagMessage(groupId, mid, data).compose(configureApiCallObserver())
     }
 
     override fun seenMessages(groupId: String): Flowable<Void> {
@@ -533,7 +568,7 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
     override fun validatePurchase(request: PurchaseValidationRequest): Flowable<PurchaseValidationResult> {
         return apiService.validatePurchase(request).map { habitResponse ->
             if (habitResponse.notifications != null) {
-                popupNotificationsManager.showNotificationDialog(habitResponse.notifications)
+                notificationsManager.setNotifications(habitResponse.notifications)
             }
             habitResponse.getData()
         }
@@ -547,8 +582,16 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         return apiService.getMember(memberId).compose(configureApiCallObserver())
     }
 
-    override fun getMemberAchievements(memberId: String): Flowable<AchievementResult> {
+    override fun getMemberWithUsername(username: String): Flowable<Member> {
+        return apiService.getMemberWithUsername(username).compose(configureApiCallObserver())
+    }
+
+    override fun getMemberAchievements(memberId: String): Flowable<List<Achievement>> {
         return apiService.getMemberAchievements(memberId).compose(configureApiCallObserver())
+    }
+
+    override fun findUsernames(username: String, context: String?, id: String?): Flowable<List<FindUsernameResult>> {
+        return apiService.findUsernames(username, context, id).compose(configureApiCallObserver())
     }
 
     override fun postPrivateMessage(messageDetails: Map<String, String>): Flowable<PostChatMessageResult> {
@@ -567,8 +610,13 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         return apiService.deletePushDevice(regId).compose(configureApiCallObserver())
     }
 
-    override val userChallenges: Flowable<List<Challenge>>
-        get() = apiService.userChallenges.compose(configureApiCallObserver())
+    override fun getUserChallenges(page: Int, memberOnly: Boolean): Flowable<List<Challenge>> {
+        return if (memberOnly) {
+            apiService.getUserChallenges(page, memberOnly).compose(configureApiCallObserver())
+        } else {
+            apiService.getUserChallenges(page).compose(configureApiCallObserver())
+        }
+    }
 
     override fun getChallengeTasks(challengeId: String): Flowable<TaskList> {
         return apiService.getChallengeTasks(challengeId).compose(configureApiCallObserver())
@@ -613,6 +661,14 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
 
     override fun readNotification(notificationId: String): Flowable<List<*>> {
         return apiService.readNotification(notificationId).compose(configureApiCallObserver())
+    }
+
+    override fun readNotifications(notificationIds: Map<String, List<String>>): Flowable<List<*>> {
+        return apiService.readNotifications(notificationIds).compose(configureApiCallObserver())
+    }
+
+    override fun seeNotifications(notificationIds: Map<String, List<String>>): Flowable<List<*>> {
+        return apiService.seeNotifications(notificationIds).compose(configureApiCallObserver())
     }
 
     override val content: Flowable<ContentResult>
@@ -672,11 +728,11 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         return apiService.updateEmail(updateObject).compose(configureApiCallObserver())
     }
 
-    override fun updatePassword(newPassword: String, oldPassword: String, oldPasswordConfirmation: String): Flowable<Void> {
+    override fun updatePassword(oldPassword: String, newPassword: String, newPasswordConfirmation: String): Flowable<Void> {
         val updateObject = HashMap<String, String>()
-        updateObject["newPassword"] = newPassword
         updateObject["password"] = oldPassword
-        updateObject["confirmPassowrd"] = oldPasswordConfirmation
+        updateObject["newPassword"] = newPassword
+        updateObject["confirmPassword"] = newPasswordConfirmation
         return apiService.updatePassword(updateObject).compose(configureApiCallObserver())
     }
 

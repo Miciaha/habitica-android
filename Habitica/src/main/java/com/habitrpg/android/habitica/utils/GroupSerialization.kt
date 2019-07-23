@@ -1,23 +1,14 @@
 package com.habitrpg.android.habitica.utils
 
-import com.google.gson.JsonDeserializationContext
-import com.google.gson.JsonDeserializer
-import com.google.gson.JsonElement
-import com.google.gson.JsonObject
-import com.google.gson.JsonParseException
-import com.google.gson.JsonSerializationContext
-import com.google.gson.JsonSerializer
+import com.google.gson.*
 import com.google.gson.reflect.TypeToken
 import com.habitrpg.android.habitica.models.inventory.Quest
 import com.habitrpg.android.habitica.models.inventory.QuestRageStrike
 import com.habitrpg.android.habitica.models.members.Member
-import com.habitrpg.android.habitica.models.social.ChatMessage
 import com.habitrpg.android.habitica.models.social.Group
-
-import java.lang.reflect.Type
-
 import io.realm.Realm
 import io.realm.RealmList
+import java.lang.reflect.Type
 
 class GroupSerialization : JsonDeserializer<Group>, JsonSerializer<Group> {
     @Throws(JsonParseException::class)
@@ -28,6 +19,9 @@ class GroupSerialization : JsonDeserializer<Group>, JsonSerializer<Group> {
         group.name = obj.get("name").asString
         if (obj.has("description") && !obj.get("description").isJsonNull) {
             group.description = obj.get("description").asString
+        }
+        if (obj.has("summary") && !obj.get("summary").isJsonNull) {
+            group.summary = obj.get("summary").asString
         }
         if (obj.has("leaderMessage") && !obj.get("leaderMessage").isJsonNull) {
             group.leaderMessage = obj.get("leaderMessage").asString
@@ -103,6 +97,16 @@ class GroupSerialization : JsonDeserializer<Group>, JsonSerializer<Group> {
                 }
             }
         }
+
+        if (obj.has("leaderOnly")) {
+            val leaderOnly = obj.getAsJsonObject("leaderOnly")
+            if (leaderOnly.has("challenges")) {
+                group.leaderOnlyChallenges = leaderOnly.get("challenges").asBoolean
+            }
+            if (leaderOnly.has("getGems")) {
+                group.leaderOnlyGetGems = leaderOnly.get("getGems").asBoolean
+            }
+        }
         return group
     }
 
@@ -110,10 +114,15 @@ class GroupSerialization : JsonDeserializer<Group>, JsonSerializer<Group> {
         val obj = JsonObject()
         obj.addProperty("name", src.name)
         obj.addProperty("description", src.description)
+        obj.addProperty("summary", src.summary)
         obj.addProperty("logo", src.logo)
         obj.addProperty("type", src.type)
         obj.addProperty("type", src.type)
         obj.addProperty("leader", src.leaderID)
+        val leaderOnly = JsonObject()
+        leaderOnly.addProperty("challenges", src.leaderOnlyChallenges)
+        leaderOnly.addProperty("getGems", src.leaderOnlyGetGems)
+        obj.add("leaderOnly", leaderOnly)
         return obj
     }
 }

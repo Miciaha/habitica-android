@@ -1,16 +1,14 @@
 package com.habitrpg.android.habitica.ui.fragments.setup
 
 import android.os.Bundle
-import android.support.v7.widget.GridLayoutManager
-import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.extensions.inflate
-import com.habitrpg.android.habitica.extensions.notNull
-import com.habitrpg.android.habitica.helpers.AmplitudeManager
 import com.habitrpg.android.habitica.models.tasks.Days
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.models.user.User
@@ -38,10 +36,6 @@ class TaskSetupFragment : BaseFragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         super.onCreateView(inflater, container, savedInstanceState)
-
-        val additionalData = HashMap<String, Any>()
-        additionalData["page"] = "Task Setup"
-        AmplitudeManager.sendEvent("navigate", AmplitudeManager.EVENT_CATEGORY_NAVIGATION, AmplitudeManager.EVENT_HITTYPE_PAGEVIEW, additionalData)
 
         return container?.inflate(R.layout.fragment_setup_tasks)
     }
@@ -79,12 +73,12 @@ class TaskSetupFragment : BaseFragment() {
     }
 
     private fun updateAvatar() {
-        user.notNull {
+        user?.let {
             avatarView?.setAvatar(it)
         }
     }
 
-    override fun injectFragment(component: AppComponent) {
+    override fun injectFragment(component: UserComponent) {
         component.inject(this)
     }
 
@@ -119,12 +113,17 @@ class TaskSetupFragment : BaseFragment() {
                 tasks.add(taskObject)
             }
         }
+        tasks.add(makeTaskObject(Task.TYPE_HABIT, getString(R.string.setup_task_habit_1), true, false, getString(R.string.setup_task_habit_1_notes)))
+        tasks.add(makeTaskObject(Task.TYPE_HABIT, getString(R.string.setup_task_habit_2), false, true, getString(R.string.setup_task_habit_2_notes)))
+        tasks.add(makeTaskObject(Task.TYPE_REWARD, getString(R.string.setup_task_reward), null, null, getString(R.string.setup_task_reward_notes)))
+        tasks.add(makeTaskObject(Task.TYPE_TODO, getString(R.string.setup_task_join_habitica), null, null, getString(R.string.setup_task_join_habitica_notes)))
         return tasks
     }
 
-    private fun makeTaskObject(type: String?, text: String?, up: Boolean?, down: Boolean?): Task {
+    private fun makeTaskObject(type: String?, text: String?, up: Boolean?, down: Boolean?, notes: String? = null): Task {
         val task = Task()
         task.text = text ?: ""
+        task.notes = notes
         task.priority = 1.0f
         task.type = type ?: ""
 
@@ -136,6 +135,7 @@ class TaskSetupFragment : BaseFragment() {
         if (type == Task.TYPE_DAILY) {
             task.frequency = "weekly"
             task.startDate = Date()
+            task.everyX = 1
             val days = Days()
             days.m = true
             days.t = true

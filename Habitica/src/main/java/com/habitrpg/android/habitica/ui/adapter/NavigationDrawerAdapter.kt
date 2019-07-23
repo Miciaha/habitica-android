@@ -1,13 +1,11 @@
 package com.habitrpg.android.habitica.ui.adapter
 
-import android.support.v4.content.ContextCompat
-import android.support.v4.graphics.drawable.DrawableCompat
-import android.support.v7.widget.RecyclerView
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.RecyclerView
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.extensions.backgroundCompat
 import com.habitrpg.android.habitica.extensions.inflate
 import com.habitrpg.android.habitica.ui.helpers.bindOptionalView
 import com.habitrpg.android.habitica.ui.menu.HabiticaDrawerItem
@@ -32,25 +30,29 @@ class NavigationDrawerAdapter(tintColor: Int, backgroundTintColor: Int): Recycle
 
 
     internal val items: MutableList<HabiticaDrawerItem> = ArrayList()
-    var selectedItem: String? = null
+    var selectedItem: Int? = null
         set(value) {
             field = value
             notifyDataSetChanged()
         }
 
-    private val itemSelectedEvents = PublishSubject.create<String>()
+    private val itemSelectedEvents = PublishSubject.create<Int>()
 
 
-    fun getItemSelectionEvents(): Flowable<String> = itemSelectedEvents.toFlowable(BackpressureStrategy.DROP)
+    fun getItemSelectionEvents(): Flowable<Int> = itemSelectedEvents.toFlowable(BackpressureStrategy.DROP)
 
+    fun getItemWithTransitionId(transitionId: Int): HabiticaDrawerItem? =
+            items.find { it.transitionId == transitionId }
     fun getItemWithIdentifier(identifier: String): HabiticaDrawerItem? =
             items.find { it.identifier == identifier }
 
+    private fun getItemPosition(transitionId: Int): Int =
+            items.indexOfFirst { it.transitionId == transitionId }
     private fun getItemPosition(identifier: String): Int =
             items.indexOfFirst { it.identifier == identifier }
 
     fun updateItem(item: HabiticaDrawerItem) {
-        val position = getItemPosition(item.identifier)
+        val position = getItemPosition(item.transitionId)
         items[position] = item
         notifyDataSetChanged()
     }
@@ -64,13 +66,14 @@ class NavigationDrawerAdapter(tintColor: Int, backgroundTintColor: Int): Recycle
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val drawerItem = getItem(position)
         if (getItemViewType(position) == 0) {
-            (holder as DrawerItemViewHolder?)?.tintColor = tintColor
-            holder.backgroundTintColor = backgroundTintColor
-            holder.bind(drawerItem, drawerItem.identifier == selectedItem)
-            holder.itemView.setOnClickListener { itemSelectedEvents.onNext(drawerItem.identifier) }
+            val itemHolder = holder as? DrawerItemViewHolder
+            itemHolder?.tintColor = tintColor
+            itemHolder?.backgroundTintColor = backgroundTintColor
+            itemHolder?.bind(drawerItem, drawerItem.transitionId == selectedItem)
+            itemHolder?.itemView?.setOnClickListener { itemSelectedEvents.onNext(drawerItem.transitionId) }
         } else {
-            (holder as SectionHeaderViewHolder?)?.backgroundTintColor = backgroundTintColor
-            holder.bind(drawerItem)
+            (holder as? SectionHeaderViewHolder)?.backgroundTintColor = backgroundTintColor
+            (holder as? SectionHeaderViewHolder)?.bind(drawerItem)
         }
     }
 
@@ -118,19 +121,15 @@ class NavigationDrawerAdapter(tintColor: Int, backgroundTintColor: Int): Recycle
                     if (pillView != null) {
                         pillView.visibility = View.VISIBLE
                         pillView.text = drawerItem.additionalInfo
-                        val drawable = ContextCompat.getDrawable(itemView.context, R.drawable.pill_bg)
-                        if (drawable != null) {
-                            DrawableCompat.setTint(drawable, backgroundTintColor)
 
-                            val pL = pillView.paddingLeft
-                            val pT = pillView.paddingTop
-                            val pR = pillView.paddingRight
-                            val pB = pillView.paddingBottom
+                        val pL = pillView.paddingLeft
+                        val pT = pillView.paddingTop
+                        val pR = pillView.paddingRight
+                        val pB = pillView.paddingBottom
 
-                            pillView.backgroundCompat = drawable
-                            pillView.setTextColor(ContextCompat.getColor(itemView.context, R.color.white))
-                            pillView.setPadding(pL, pT, pR, pB)
-                        }
+                        pillView.background = ContextCompat.getDrawable(itemView.context, R.drawable.pill_bg_purple_200)
+                        pillView.setTextColor(ContextCompat.getColor(itemView.context, R.color.white))
+                        pillView.setPadding(pL, pT, pR, pB)
                     }
                 } else {
                     pillView?.visibility = View.GONE

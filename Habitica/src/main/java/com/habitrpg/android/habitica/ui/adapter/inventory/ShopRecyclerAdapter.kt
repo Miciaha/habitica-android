@@ -1,7 +1,6 @@
 package com.habitrpg.android.habitica.ui.adapter.inventory
 
 import android.content.Context
-import android.support.v7.widget.RecyclerView
 import android.text.Html
 import android.text.method.LinkMovementMethod
 import android.view.View
@@ -9,26 +8,25 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.events.commands.OpenGemPurchaseFragmentCommand
 import com.habitrpg.android.habitica.ui.helpers.bindView
 import com.habitrpg.android.habitica.extensions.inflate
-import com.habitrpg.android.habitica.extensions.notNull
+import com.habitrpg.android.habitica.helpers.MainNavigationController
 import com.habitrpg.android.habitica.models.inventory.Item
 import com.habitrpg.android.habitica.models.shops.Shop
 import com.habitrpg.android.habitica.models.shops.ShopCategory
 import com.habitrpg.android.habitica.models.shops.ShopItem
+import com.habitrpg.android.habitica.models.user.OwnedItem
 import com.habitrpg.android.habitica.models.user.User
 import com.habitrpg.android.habitica.ui.viewHolders.SectionViewHolder
 import com.habitrpg.android.habitica.ui.viewHolders.ShopItemViewHolder
 import com.habitrpg.android.habitica.ui.views.NPCBannerView
-import org.greenrobot.eventbus.EventBus
 
 
-class ShopRecyclerAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class ShopRecyclerAdapter : androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
 
     private val items: MutableList<Any> = ArrayList()
     private var shopIdentifier: String? = null
-    private var ownedItems: Map<String, Item> = HashMap()
+    private var ownedItems: Map<String, OwnedItem> = HashMap()
 
 
     var shopSpriteSuffix: String = ""
@@ -84,7 +82,7 @@ class ShopRecyclerAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         notifyDataSetChanged()
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): androidx.recyclerview.widget.RecyclerView.ViewHolder =
             when (viewType) {
                 0 -> {
                     val view = parent.inflate(R.layout.shop_header)
@@ -106,17 +104,17 @@ class ShopRecyclerAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 }
             }
 
-    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: androidx.recyclerview.widget.RecyclerView.ViewHolder, position: Int) {
         val obj = getItem(position)
         if (obj != null) {
             when (obj.javaClass) {
-                Shop::class.java -> (obj as? Shop).notNull { (holder as? ShopHeaderViewHolder)?.bind(it, shopSpriteSuffix) }
+                Shop::class.java -> (obj as? Shop)?.let { (holder as? ShopHeaderViewHolder)?.bind(it, shopSpriteSuffix) }
                 ShopCategory::class.java -> {
                     val category = obj as? ShopCategory
                     val sectionHolder = holder as? SectionViewHolder ?: return
                     sectionHolder.bind(category?.text ?: "")
                     if (gearCategories.contains(category)) {
-                        context.notNull {context ->
+                        context?.let {context ->
                             val adapter = HabiticaClassArrayAdapter(context, R.layout.class_spinner_dropdown_item, gearCategories.map { it.identifier })
                             sectionHolder.spinnerAdapter = adapter
                             sectionHolder.selectedItem = gearCategories.indexOf(category)
@@ -142,7 +140,7 @@ class ShopRecyclerAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                     val itemHolder = holder as? ShopItemViewHolder ?: return
                     itemHolder.bind(item, item.canAfford(user))
                     if (ownedItems.containsKey(item.key+"-"+item.pinType)) {
-                        itemHolder.itemCount = ownedItems[item.key+"-"+item.pinType]?.owned ?: 0
+                        itemHolder.itemCount = ownedItems[item.key+"-"+item.pinType]?.numberOwned ?: 0
                     }
                     itemHolder.isPinned = pinnedItemKeys.contains(item.key)
                 }
@@ -212,7 +210,7 @@ class ShopRecyclerAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private fun getSelectedShopCategory() =
             gearCategories.firstOrNull { selectedGearCategory == it.identifier }
 
-    fun setOwnedItems(ownedItems: Map<String, Item>) {
+    fun setOwnedItems(ownedItems: Map<String, OwnedItem>) {
         this.ownedItems = ownedItems
         this.notifyDataSetChanged()
     }
@@ -222,7 +220,7 @@ class ShopRecyclerAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         this.notifyDataSetChanged()
     }
 
-    internal class ShopHeaderViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    internal class ShopHeaderViewHolder(itemView: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(itemView) {
 
         private val descriptionView: TextView by bindView(itemView, R.id.descriptionView)
         private val npcBannerView: NPCBannerView by bindView(itemView, R.id.npcBannerView)
@@ -243,11 +241,11 @@ class ShopRecyclerAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     }
 
-    class EmptyStateViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+    class EmptyStateViewHolder(view: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view) {
         private val subscribeButton: Button? by bindView(itemView, R.id.subscribeButton)
         private val textView: TextView? by bindView(itemView, R.id.textView)
         init {
-            subscribeButton?.setOnClickListener { EventBus.getDefault().post(OpenGemPurchaseFragmentCommand()) }
+            subscribeButton?.setOnClickListener { MainNavigationController.navigate(R.id.gemPurchaseActivity) }
         }
 
         var text: String? = null

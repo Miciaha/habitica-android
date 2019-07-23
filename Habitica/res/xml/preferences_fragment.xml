@@ -6,21 +6,22 @@
 
     <PreferenceCategory
         android:title="@string/pref_account_header"
-        android:key="account_prefs">
+        android:key="account_prefs"
+        android:layout="@layout/preference_category">
 
         <PreferenceScreen android:title="@string/profile"
             android:summary="@string/profile_summary"
             android:key="profile"
             android:layout="@layout/preference_child_summary">
-                <EditTextPreference android:key="display_name"
-                    android:title="@string/display_name"
-                    android:layout="@layout/preference_child_summary" />
-                <EditTextPreference android:key="photo_url"
-                    android:title="@string/photo_url"
-                    android:layout="@layout/preference_child_summary" />
-                <EditTextPreference android:key="about"
-                    android:title="@string/about"
-                    android:layout="@layout/preference_child_summary" />
+            <EditTextPreference android:key="display_name"
+                android:title="@string/display_name"
+                android:layout="@layout/preference_child_summary" />
+            <EditTextPreference android:key="photo_url"
+                android:title="@string/photo_url"
+                android:layout="@layout/preference_child_summary" />
+            <EditTextPreference android:key="about"
+                android:title="@string/about"
+                android:layout="@layout/preference_child_summary" />
         </PreferenceScreen>
 
         <PreferenceScreen
@@ -29,31 +30,41 @@
             android:summary="@string/authentication_summary"
             app:key="authentication"
             android:layout="@layout/preference_child_summary">
-                <Preference
-                    android:key="login_name"
-                    android:title="@string/login_name"
-                    android:selectable="true"
-                    android:persistent="false"
-                    android:shouldDisableView="false"
-                    android:layout="@layout/preference_child_summary" />
+            <Preference
+                android:key="login_name"
+                android:title="@string/login_name"
+                android:selectable="true"
+                android:persistent="false"
+                android:shouldDisableView="false"
+                android:layout="@layout/preference_child_summary" />
             <Preference android:title="@string/confirm_username"
                 android:key="confirm_username"
                 android:layout="@layout/preference_child_summary" />
 
-                <Preference
-                    android:key="email"
-                    android:title="@string/email"
-                    android:selectable="true"
-                    android:persistent="false"
-                    android:shouldDisableView="false"
-                    android:layout="@layout/preference_child_summary"/>
-                <Preference
-                        android:key="subscription_status"
-                        android:title="@string/subscription_status"
-                        android:selectable="true"
-                        android:persistent="false"
-                        android:shouldDisableView="false"
-                    android:layout="@layout/preference_child_summary"/>
+            <Preference android:title="@string/change_password"
+                android:key="change_password"
+                android:layout="@layout/preference_child_summary" />
+            <Preference
+                android:key="email"
+                android:title="@string/email"
+                android:selectable="true"
+                android:persistent="false"
+                android:shouldDisableView="false"
+                android:layout="@layout/preference_child_summary"/>
+            <Preference
+                android:key="add_local_auth"
+                android:title="@string/add_local_authentication"
+                android:selectable="true"
+                android:persistent="false"
+                android:shouldDisableView="false"
+                android:layout="@layout/preference_child_summary"/>
+            <Preference
+                android:key="subscription_status"
+                android:title="@string/subscription_status"
+                android:selectable="true"
+                android:persistent="false"
+                android:shouldDisableView="false"
+                android:layout="@layout/preference_child_summary"/>
             <PreferenceCategory android:title="@string/danger_zone">
                 <Preference android:title="@string/reset_account"
                     android:key="reset_account"
@@ -67,32 +78,23 @@
         <PreferenceScreen android:title="API"
             android:key="api"
             android:layout="@layout/preference_child_summary">
-                <Preference
-                    android:key="@string/SP_userID"
-                    android:title="@string/SP_userID_title"
-                    android:selectable="true"
-                    android:persistent="false"
-                    android:shouldDisableView="false"
-                    android:summary="@string/SP_userID_summary"
-                    android:layout="@layout/preference_child_summary"/>
+            <Preference
+                android:key="@string/SP_userID"
+                android:title="@string/SP_userID_title"
+                android:selectable="true"
+                android:persistent="false"
+                android:shouldDisableView="false"
+                android:summary="@string/SP_userID_summary"
+                android:layout="@layout/preference_child_summary"/>
 
-                <Preference
-                    android:key="@string/SP_APIToken"
-                    android:title="@string/SP_APIToken_title"
-                    android:selectable="true"
-                    android:persistent="false"
-                    android:shouldDisableView="false"
-                    android:summary="@string/SP_APIToken_summary"
-                    android:layout="@layout/preference_child_summary"/>
-
-                <Preference
-                    android:key="SP_user_qr_code"
-                    android:title="@string/SP_user_qr_code"
-                    android:selectable="true"
-                    android:persistent="false"
-                    android:shouldDisableView="false"
-                    android:summary="@string/SP_user_qr_code"
-                    android:layout="@layout/preference_child_summary"/>
+            <Preference
+                android:key="@string/SP_APIToken"
+                android:title="@string/SP_APIToken_title"
+                android:selectable="true"
+                android:persistent="false"
+                android:shouldDisableView="false"
+                android:summary="@string/SP_APIToken_summary"
+                android:layout="@layout/preference_child_summary"/>
         </PreferenceScreen>
 
         <Preference
@@ -110,7 +112,8 @@
     </PreferenceCategory>
 
     <PreferenceCategory
-        android:title="@string/app_settings">
+        android:title="@string/app_settings"
+        android:layout="@layout/preference_category">
         <ListPreference android:title="@string/pref_first_day_of_the_week_title"
             android:key="@string/pref_first_day_of_the_week_key"
             android:entries="@array/weekdays"
@@ -137,7 +140,8 @@
     </PreferenceCategory>
 
     <PreferenceCategory
-        android:title="@string/pref_reminder_header">
+        android:title="@string/pref_reminder_header"
+        android:layout="@layout/preference_category">
 
         <CheckBoxPreference
             android:key="use_reminder"
@@ -154,17 +158,19 @@
     </PreferenceCategory>
 
     <PreferenceCategory
-            android:title="@string/pref_cds_header">
+        android:title="@string/pref_cds_header"
+        android:layout="@layout/preference_category">
 
         <com.habitrpg.android.habitica.prefs.TimePreference
-                android:key="cds_time"
-                android:defaultValue="00:00"
+            android:key="cds_time"
+            android:defaultValue="00:00"
             android:layout="@layout/preference_child_summary" />
 
     </PreferenceCategory>
 
     <PreferenceCategory
-        android:title="@string/push_notifications">
+        android:title="@string/push_notifications"
+        android:layout="@layout/preference_category">
 
         <CheckBoxPreference
             android:key="usePushNotifications"
@@ -228,6 +234,11 @@
                     android:title="@string/preference_push_invited_to_quest"
                     android:layout="@layout/preference_child_summary"/>
 
+                <CheckBoxPreference
+                    android:key="preference_push_important_announcements"
+                    android:defaultValue="true"
+                    android:title="@string/preference_push_important_announcements"
+                    android:layout="@layout/preference_child_summary"/>
 
             </PreferenceCategory>
 
@@ -236,10 +247,16 @@
     </PreferenceCategory>
 
     <PreferenceCategory
-        android:title="@string/maintenance">
+        android:title="@string/maintenance"
+        android:layout="@layout/preference_category">
         <Preference android:title="@string/reload_content"
             android:key="reload_content"
             android:layout="@layout/preference_child_summary"/>
+        <ListPreference android:title="@string/server"
+            android:key="server_url"
+            android:entries="@array/server_urls"
+            android:entryValues="@array/server_urls"
+            android:layout="@layout/preference_child_summary" />
 
     </PreferenceCategory>
 </PreferenceScreen>

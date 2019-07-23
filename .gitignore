@@ -61,3 +61,9 @@ reports/
 captures
 /Habitica/prod
 /Habitica/release
+/fastlane/secret-key.json
+/fastlane/report.xml
+fastlane/metadata/android/*/changelogs/
+/Habitica/amazon
+/fastlane/Fastfile.bkp
+/fastlane/Fastfile

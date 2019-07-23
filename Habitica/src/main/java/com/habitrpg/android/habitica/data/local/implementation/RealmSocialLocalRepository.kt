@@ -2,10 +2,8 @@ package com.habitrpg.android.habitica.data.local.implementation
 
 import com.habitrpg.android.habitica.data.local.SocialLocalRepository
 import com.habitrpg.android.habitica.models.members.Member
-import com.habitrpg.android.habitica.models.social.ChatMessage
-import com.habitrpg.android.habitica.models.social.ChatMessageLike
-import com.habitrpg.android.habitica.models.social.Group
-import com.habitrpg.android.habitica.models.social.GroupMembership
+import com.habitrpg.android.habitica.models.social.*
+import com.habitrpg.android.habitica.models.user.ContributorInfo
 import com.habitrpg.android.habitica.models.user.User
 import io.reactivex.Flowable
 import io.realm.Realm
@@ -15,6 +13,12 @@ import java.util.*
 
 
 class RealmSocialLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm), SocialLocalRepository {
+    override fun getChatMessage(messageID: String): Flowable<ChatMessage> = realm.where(ChatMessage::class.java)
+            .equalTo("id", messageID)
+            .findAll()
+            .asFlowable()
+            .filter { it.isLoaded && it.isNotEmpty() }
+            .map { it.first() }
 
     override fun getGroupMembership(userId: String, id: String): Flowable<GroupMembership> = realm.where(GroupMembership::class.java)
             .equalTo("userID", userId)
@@ -45,23 +49,57 @@ class RealmSocialLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm)
         }
     }
 
+    override fun saveInboxMessages(userID: String, messages: List<ChatMessage>) {
+        realm.executeTransaction { realm.insertOrUpdate(messages) }
+        val existingMessages = realm.where(ChatMessage::class.java).equalTo("isInboxMessage", true).findAll()
+        val messagesToRemove = ArrayList<ChatMessage>()
+        for (existingMessage in existingMessages) {
+            val isStillMember = messages.any { existingMessage.id == it.id }
+            if (!isStillMember) {
+                messagesToRemove.add(existingMessage)
+            }
+        }
+        realm.executeTransaction {
+            messagesToRemove.forEach { it.deleteFromRealm() }
+        }
+    }
+
+    override fun saveGroupMemberships(userID: String?, memberships: List<GroupMembership>) {
+        realm.executeTransaction { realm.insertOrUpdate(memberships) }
+        if (userID != null) {
+            val existingMemberships = realm.where(GroupMembership::class.java).equalTo("userID", userID).findAll()
+            val membersToRemove = ArrayList<GroupMembership>()
+            for (existingMembership in existingMemberships) {
+                val isStillMember = memberships.any { existingMembership.combinedID == it.combinedID }
+                if (!isStillMember) {
+                    membersToRemove.add(existingMembership)
+                }
+            }
+            realm.executeTransaction {
+                membersToRemove.forEach { it.deleteFromRealm() }
+            }
+        }
+    }
+
     override fun getPublicGuilds(): Flowable<RealmResults<Group>> = realm.where(Group::class.java)
-                .equalTo("type", "guild")
-                .equalTo("privacy", "public")
-                .sort("memberCount", Sort.DESCENDING)
+            .equalTo("type", "guild")
+            .equalTo("privacy", "public")
+            .notEqualTo("id", Group.TAVERN_ID)
+            .sort("memberCount", Sort.DESCENDING)
             .findAll()
-                .asFlowable()
-                .filter { it.isLoaded }
+            .asFlowable()
+            .filter { it.isLoaded }
 
     override fun getUserGroups(userID: String): Flowable<RealmResults<Group>> = realm.where(GroupMembership::class.java)
             .equalTo("userID", userID)
             .findAll()
             .asFlowable()
             .filter { it.isLoaded }
-            .flatMap {
+            .flatMap {memberships ->
                 realm.where(Group::class.java)
                         .equalTo("type", "guild")
-                        .`in`("id", it.map {
+                        .notEqualTo("id", Group.TAVERN_ID)
+                        .`in`("id", memberships.map {
                             return@map it.groupID
                         }.toTypedArray())
                         .sort("memberCount", Sort.DESCENDING)
@@ -173,10 +211,15 @@ class RealmSocialLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm)
                     messagesToRemove.add(existingMessage)
                 }
             }
+            val idsToRemove = messagesToRemove.map { it.id }
+            val userStylestoRemove = realm.where(UserStyles::class.java).`in`("id", idsToRemove.toTypedArray()).findAll()
+            val contributorToRemove = realm.where(ContributorInfo::class.java).`in`("userId", idsToRemove.toTypedArray()).findAll()
             realm.executeTransaction {
                 for (member in messagesToRemove) {
                     member.deleteFromRealm()
                 }
+                userStylestoRemove.deleteAllFromRealm()
+                contributorToRemove.deleteAllFromRealm()
             }
         }
     }
@@ -193,5 +236,25 @@ class RealmSocialLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm)
     override fun doesGroupExist(id: String): Boolean {
         val party = realm.where(Group::class.java).equalTo("id", id).findFirst()
         return party != null && party.isValid
+    }
+
+    override fun getInboxMessages(userId: String, replyToUserID: String?): Flowable<RealmResults<ChatMessage>> {
+        return realm.where(ChatMessage::class.java)
+                .equalTo("isInboxMessage", true)
+                .equalTo("uuid", replyToUserID)
+                .sort("timestamp", Sort.DESCENDING)
+                .findAll()
+                .asFlowable()
+                .filter { it.isLoaded }
+    }
+
+    override fun getInboxOverviewList(userId: String): Flowable<RealmResults<ChatMessage>> {
+        return realm.where(ChatMessage::class.java)
+                .equalTo("isInboxMessage", true)
+                .sort("timestamp", Sort.DESCENDING)
+                .distinct("uuid")
+                .findAll()
+                .asFlowable()
+                .filter { it.isLoaded }
     }
 }

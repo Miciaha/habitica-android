@@ -10,18 +10,16 @@ import android.widget.TextView
 import com.habitrpg.android.habitica.R
 import com.habitrpg.android.habitica.data.UserRepository
 import com.habitrpg.android.habitica.events.BoughtGemsEvent
-import com.habitrpg.android.habitica.events.commands.OpenGemPurchaseFragmentCommand
-import com.habitrpg.android.habitica.events.commands.OpenMenuItemCommand
+import com.habitrpg.android.habitica.helpers.HealthFormatter
+import com.habitrpg.android.habitica.helpers.MainNavigationController
 import com.habitrpg.android.habitica.models.Avatar
 import com.habitrpg.android.habitica.models.user.Stats
 import com.habitrpg.android.habitica.models.user.User
-import com.habitrpg.android.habitica.ui.fragments.NavigationDrawerFragment
 import com.habitrpg.android.habitica.ui.helpers.bindView
 import com.habitrpg.android.habitica.ui.views.CurrencyViews
 import com.habitrpg.android.habitica.ui.views.HabiticaIconsHelper
 import com.habitrpg.android.habitica.ui.views.ValueBar
 import io.reactivex.disposables.Disposable
-import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import java.util.*
 
@@ -98,12 +96,10 @@ class AvatarWithBarsViewModel(private val context: Context, view: View, userRepo
         }
 
         currencyView.setOnClickListener {
-            EventBus.getDefault().post(OpenGemPurchaseFragmentCommand())
+            MainNavigationController.navigate(R.id.gemPurchaseActivity)
         }
         avatarView.setOnClickListener {
-            val event = OpenMenuItemCommand()
-            event.identifier = NavigationDrawerFragment.SIDEBAR_AVATAR
-            EventBus.getDefault().post(event)
+            MainNavigationController.navigate(R.id.avatarOverviewFragment)
         }
     }
 
@@ -111,7 +107,7 @@ class AvatarWithBarsViewModel(private val context: Context, view: View, userRepo
         if (valueMax != 0) {
             cachedMaxHealth = valueMax
         }
-        hpBar.set(Math.ceil(value.toDouble()), cachedMaxHealth.toDouble())
+        hpBar.set(HealthFormatter.format(value.toDouble()), cachedMaxHealth.toDouble())
     }
 
     private fun setXpBarData(value: Float, valueMax: Int) {
@@ -148,7 +144,8 @@ class AvatarWithBarsViewModel(private val context: Context, view: View, userRepo
                 maxHP = 50
             }
 
-            valueBar.set(Math.ceil(stats.hp ?: 0.0), maxHP.toDouble())
+            val hp = stats.hp?.let { HealthFormatter.format(it) } ?: 0.0
+            valueBar.set(hp, maxHP.toDouble())
         }
     }
 }

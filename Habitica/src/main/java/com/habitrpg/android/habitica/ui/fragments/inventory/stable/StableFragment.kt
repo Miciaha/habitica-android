@@ -1,22 +1,20 @@
 package com.habitrpg.android.habitica.ui.fragments.inventory.stable
 
 import android.os.Bundle
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentPagerAdapter
-import android.support.v4.view.ViewPager
+import androidx.fragment.app.FragmentPagerAdapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.ui.fragments.BaseMainFragment
 import com.habitrpg.android.habitica.ui.helpers.bindView
 import com.habitrpg.android.habitica.ui.helpers.resetViews
 
 class StableFragment : BaseMainFragment() {
 
-    private val viewPager: ViewPager? by bindView(R.id.viewPager)
+    private val viewPager: androidx.viewpager.widget.ViewPager? by bindView(R.id.viewPager)
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
@@ -33,7 +31,7 @@ class StableFragment : BaseMainFragment() {
         setViewPagerAdapter()
     }
 
-    override fun injectFragment(component: AppComponent) {
+    override fun injectFragment(component: UserComponent) {
         component.inject(this)
     }
 
@@ -42,7 +40,7 @@ class StableFragment : BaseMainFragment() {
 
         viewPager?.adapter = object : FragmentPagerAdapter(fragmentManager) {
 
-            override fun getItem(position: Int): Fragment {
+            override fun getItem(position: Int): androidx.fragment.app.Fragment {
 
                 val fragment = StableRecyclerFragment()
 
@@ -76,9 +74,4 @@ class StableFragment : BaseMainFragment() {
     }
 
 
-    override fun customTitle(): String {
-        return if (!isAdded) {
-            ""
-        } else getString(R.string.sidebar_stable)
-    }
 }

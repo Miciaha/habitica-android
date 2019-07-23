@@ -1,11 +1,11 @@
 package com.habitrpg.android.habitica.data
 
-import com.habitrpg.android.habitica.models.AchievementResult
+import com.habitrpg.android.habitica.models.Achievement
 import com.habitrpg.android.habitica.models.inventory.Quest
 import com.habitrpg.android.habitica.models.members.Member
 import com.habitrpg.android.habitica.models.responses.PostChatMessageResult
-import com.habitrpg.android.habitica.models.social.Challenge
 import com.habitrpg.android.habitica.models.social.ChatMessage
+import com.habitrpg.android.habitica.models.social.FindUsernameResult
 import com.habitrpg.android.habitica.models.social.Group
 import com.habitrpg.android.habitica.models.social.GroupMembership
 import com.habitrpg.android.habitica.models.user.User
@@ -17,15 +17,13 @@ import java.util.*
 interface SocialRepository : BaseRepository {
     fun getPublicGuilds(): Flowable<RealmResults<Group>>
 
-    fun getUserChallenges(): Flowable<List<Challenge>>
-
     fun getUserGroups(): Flowable<RealmResults<Group>>
     fun retrieveGroupChat(groupId: String): Single<List<ChatMessage>>
     fun getGroupChat(groupId: String): Flowable<RealmResults<ChatMessage>>
 
     fun markMessagesSeen(seenGroupId: String)
 
-    fun flagMessage(chatMessage: ChatMessage): Flowable<Void>
+    fun flagMessage(chatMessage: ChatMessage, additionalInfo: String): Flowable<Void>
 
     fun likeMessage(chatMessage: ChatMessage): Flowable<ChatMessage>
 
@@ -41,13 +39,18 @@ interface SocialRepository : BaseRepository {
 
     fun joinGroup(id: String?): Flowable<Group>
 
-    fun updateGroup(group: Group?, name: String?, description: String?, leader: String?, privacy: String?): Flowable<Void>
+    fun createGroup(name: String?, description: String?, leader: String?, type: String?, privacy: String?, leaderCreateChallenge: Boolean?): Flowable<Group>
+    fun updateGroup(group: Group?, name: String?, description: String?, leader: String?, leaderCreateChallenge: Boolean?): Flowable<Void>
 
     fun retrieveGroups(type: String): Flowable<List<Group>>
     fun getGroups(type: String): Flowable<RealmResults<Group>>
 
-    fun postPrivateMessage(messageObject: HashMap<String, String>): Flowable<PostChatMessageResult>
-    fun postPrivateMessage(recipientId: String, message: String): Flowable<PostChatMessageResult>
+
+    fun getInboxMessages(replyToUserID: String?): Flowable<RealmResults<ChatMessage>>
+    fun retrieveInboxMessages(): Flowable<List<ChatMessage>>
+    fun getInboxOverviewList(): Flowable<RealmResults<ChatMessage>>
+    fun postPrivateMessage(messageObject: HashMap<String, String>): Flowable<List<ChatMessage>>
+    fun postPrivateMessage(recipientId: String, message: String): Flowable<List<ChatMessage>>
 
 
     fun getGroupMembers(id: String): Flowable<RealmResults<Member>>
@@ -56,6 +59,9 @@ interface SocialRepository : BaseRepository {
     fun inviteToGroup(id: String, inviteData: Map<String, Any>): Flowable<List<String>>
 
     fun getMember(userId: String?): Flowable<Member>
+    fun getMemberWithUsername(username: String?): Flowable<Member>
+
+    fun findUsernames(username: String, context: String? = null, id: String? = null): Flowable<List<FindUsernameResult>>
 
     fun markPrivateMessagesRead(user: User?): Flowable<Void>
 
@@ -72,8 +78,9 @@ interface SocialRepository : BaseRepository {
 
     fun forceStartQuest(party: Group): Flowable<Quest>
 
-    fun getMemberAchievements(userId: String?): Flowable<AchievementResult>
+    fun getMemberAchievements(userId: String?): Flowable<List<Achievement>>
 
     fun getGroupMembership(id: String): Flowable<GroupMembership>
     fun getGroupMemberships(): Flowable<RealmResults<GroupMembership>>
+    fun getChatmessage(messageID: String): Flowable<ChatMessage>
 }

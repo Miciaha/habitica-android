@@ -1,7 +1,7 @@
 package com.habitrpg.android.habitica.ui.views.subscriptions
 
 import android.content.Context
-import android.support.v4.content.ContextCompat
+import androidx.core.content.ContextCompat
 import android.util.AttributeSet
 import android.view.View
 import android.widget.FrameLayout
@@ -30,7 +30,11 @@ class SubscriptionOptionView(context: Context, attrs: AttributeSet) : FrameLayou
                 R.styleable.SubscriptionOptionView,
                 0, 0)
 
-        descriptionTextView.text = context.getString(R.string.subscription_duration, a.getText(R.styleable.SubscriptionOptionView_recurringText))
+        if (a.getBoolean(R.styleable.SubscriptionOptionView_isNonRecurring, false)) {
+            descriptionTextView.text = context.getString(R.string.subscription_duration_norenew, a.getText(R.styleable.SubscriptionOptionView_recurringText))
+        } else {
+            descriptionTextView.text = context.getString(R.string.subscription_duration, a.getText(R.styleable.SubscriptionOptionView_recurringText))
+        }
 
         gemCapTextView.text = a.getText(R.styleable.SubscriptionOptionView_gemCapText)
         val hourGlassCount = a.getInteger(R.styleable.SubscriptionOptionView_hourGlassCount, 0)
@@ -52,26 +56,24 @@ class SubscriptionOptionView(context: Context, attrs: AttributeSet) : FrameLayou
     }
 
     fun setIsPurchased(purchased: Boolean) {
-        val horizontalPadding = resources.getDimension(R.dimen.pill_horizontal_padding).toInt()
-        val verticalPadding = resources.getDimension(R.dimen.pill_vertical_padding).toInt()
         if (purchased) {
             subscriptionSelectedView.setBackgroundResource(R.drawable.subscription_selected)
             subscriptionSelectedFrameView.setBackgroundResource(R.color.brand_300)
             gemCapTextView.setBackgroundResource(R.drawable.pill_bg_green)
             gemCapTextView.setTextColor(ContextCompat.getColor(context, R.color.white))
-            gemCapTextView.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
             hourGlassTextView.setBackgroundResource(R.drawable.pill_bg_green)
             hourGlassTextView.setTextColor(ContextCompat.getColor(context, R.color.white))
-            hourGlassTextView.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
         } else {
             subscriptionSelectedView.setBackgroundResource(R.drawable.subscription_unselected)
             subscriptionSelectedFrameView.setBackgroundResource(R.color.brand_700)
             gemCapTextView.setBackgroundResource(R.drawable.pill_bg)
-            gemCapTextView.setTextColor(ContextCompat.getColor(context, R.color.text_light))
-            gemCapTextView.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+            gemCapTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_50))
             hourGlassTextView.setBackgroundResource(R.drawable.pill_bg)
-            hourGlassTextView.setTextColor(ContextCompat.getColor(context, R.color.text_light))
-            hourGlassTextView.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+            hourGlassTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_50))
         }
+        val horizontalPadding = resources.getDimension(R.dimen.pill_horizontal_padding).toInt()
+        val verticalPadding = resources.getDimension(R.dimen.pill_vertical_padding).toInt()
+        gemCapTextView.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+        hourGlassTextView.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
     }
 }

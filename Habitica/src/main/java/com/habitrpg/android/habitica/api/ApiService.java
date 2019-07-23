@@ -1,6 +1,6 @@
 package com.habitrpg.android.habitica.api;
 
-import com.habitrpg.android.habitica.models.AchievementResult;
+import com.habitrpg.android.habitica.models.Achievement;
 import com.habitrpg.android.habitica.models.ContentResult;
 import com.habitrpg.android.habitica.models.LeaveChallengeBody;
 import com.habitrpg.android.habitica.models.PurchaseValidationRequest;
@@ -27,14 +27,13 @@ import com.habitrpg.android.habitica.models.shops.Shop;
 import com.habitrpg.android.habitica.models.shops.ShopItem;
 import com.habitrpg.android.habitica.models.social.Challenge;
 import com.habitrpg.android.habitica.models.social.ChatMessage;
+import com.habitrpg.android.habitica.models.social.FindUsernameResult;
 import com.habitrpg.android.habitica.models.social.Group;
 import com.habitrpg.android.habitica.models.tasks.Task;
 import com.habitrpg.android.habitica.models.tasks.TaskList;
 import com.habitrpg.android.habitica.models.user.Items;
 import com.habitrpg.android.habitica.models.user.Stats;
 import com.habitrpg.android.habitica.models.user.User;
-
-import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.Map;
@@ -200,6 +199,9 @@ public interface ApiService {
     @GET("groups/{gid}")
     Flowable<HabitResponse<Group>> getGroup(@Path("gid") String groupId);
 
+    @POST("groups")
+    Flowable<HabitResponse<Group>> createGroup(@Body Group item);
+
     @PUT("groups/{id}")
     Flowable<HabitResponse<Void>> updateGroup(@Path("id") String id, @Body Group item);
 
@@ -218,6 +220,9 @@ public interface ApiService {
     @DELETE("groups/{gid}/chat/{messageId}")
     Flowable<HabitResponse<Void>> deleteMessage(@Path("gid") String groupId, @Path("messageId") String messageId);
 
+    @DELETE("inbox/messages/{messageId}")
+    Flowable<HabitResponse<Void>> deleteInboxMessage(@Path("messageId") String messageId);
+
     @GET("groups/{gid}/members")
     Flowable<HabitResponse<List<Member>>> getGroupMembers(@Path("gid") String groupId, @Query("includeAllPublicFields") Boolean includeAllPublicFields);
 
@@ -229,7 +234,7 @@ public interface ApiService {
     Flowable<HabitResponse<ChatMessage>> likeMessage(@Path("gid") String groupId, @Path("mid") String mid);
 
     @POST("groups/{gid}/chat/{mid}/flag")
-    Flowable<HabitResponse<Void>> flagMessage(@Path("gid") String groupId, @Path("mid") String mid);
+    Flowable<HabitResponse<Void>> flagMessage(@Path("gid") String groupId, @Path("mid") String mid, @Body Map<String, String> data);
 
     @POST("groups/{gid}/chat/seen")
     Flowable<HabitResponse<Void>> seenMessages(@Path("gid") String groupId);
@@ -266,6 +271,8 @@ public interface ApiService {
 
     @POST("/iap/android/subscribe")
     Flowable<HabitResponse<Void>> validateSubscription(@Body SubscriptionValidationRequest request);
+    @POST("/iap/android/norenew-subscribe")
+    Flowable<HabitResponse<Void>> validateNoRenewSubscription(@Body PurchaseValidationRequest request);
 
     @POST("user/custom-day-start")
     Flowable<HabitResponse<User>> changeCustomDayStart(@Body Map<String, Object> updateObject);
@@ -273,12 +280,17 @@ public interface ApiService {
     //Members URL
     @GET("members/{mid}")
     Flowable<HabitResponse<Member>> getMember(@Path("mid") String memberId);
+    @GET("members/username/{username}")
+    Flowable<HabitResponse<Member>> getMemberWithUsername(@Path("username") String username);
 
     @GET("members/{mid}/achievements")
-    Flowable<HabitResponse<AchievementResult>> getMemberAchievements(@Path("mid") String memberId);
+    Flowable<HabitResponse<List<Achievement>>> getMemberAchievements(@Path("mid") String memberId);
 
     @POST("members/send-private-message")
     Flowable<HabitResponse<PostChatMessageResult>> postPrivateMessage(@Body Map<String, String> messageDetails);
+
+    @GET("members/find/{username}")
+    Flowable<HabitResponse<List<FindUsernameResult>>> findUsernames(@Path("username") String username, @Query("context") String context, @Query("id") String id);
 
     @GET("shops/{identifier}")
     Flowable<HabitResponse<Shop>> retrieveShopInventory(@Path("identifier") String identifier);
@@ -295,7 +307,9 @@ public interface ApiService {
     /* challenges api */
 
     @GET("challenges/user")
-    Flowable<HabitResponse<List<Challenge>>> getUserChallenges();
+    Flowable<HabitResponse<List<Challenge>>> getUserChallenges(@Query("page") Integer page, @Query("member") boolean memberOnly);
+    @GET("challenges/user")
+    Flowable<HabitResponse<List<Challenge>>> getUserChallenges(@Query("page") Integer page);
 
     @GET("tasks/challenge/{challengeId}")
     Flowable<HabitResponse<TaskList>> getChallengeTasks(@Path("challengeId") String challengeId);
@@ -333,6 +347,12 @@ public interface ApiService {
     // Notifications
     @POST("notifications/{notificationId}/read")
     Flowable<HabitResponse<List>> readNotification(@Path("notificationId") String notificationId);
+
+    @POST("notifications/read")
+    Flowable<HabitResponse<List>> readNotifications(@Body Map<String, List<String>> notificationIds);
+
+    @POST("notifications/see")
+    Flowable<HabitResponse<List>> seeNotifications(@Body Map<String, List<String>> notificationIds);
 
     @POST("user/open-mystery-item")
     Flowable<HabitResponse<Equipment>> openMysteryItem();

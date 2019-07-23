@@ -1,10 +1,10 @@
 package com.habitrpg.android.habitica.ui.activities
 
 import android.os.Bundle
-import android.support.v7.preference.PreferenceFragmentCompat
-import android.support.v7.preference.PreferenceScreen
+import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.PreferenceScreen
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.ui.fragments.preferences.APIPreferenceFragment
 import com.habitrpg.android.habitica.ui.fragments.preferences.AuthenticationPreferenceFragment
 import com.habitrpg.android.habitica.ui.fragments.preferences.PreferencesFragment
@@ -26,7 +26,7 @@ class PrefsActivity : BaseActivity(), PreferenceFragmentCompat.OnPreferenceStart
                 .commit()
     }
 
-    override fun injectActivity(component: AppComponent?) {
+    override fun injectActivity(component: UserComponent?) {
         component?.inject(this)
     }
 

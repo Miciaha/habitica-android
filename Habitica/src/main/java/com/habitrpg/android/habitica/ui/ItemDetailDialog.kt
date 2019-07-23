@@ -2,7 +2,7 @@ package com.habitrpg.android.habitica.ui
 
 import android.content.Context
 import android.content.DialogInterface
-import android.support.v7.app.AlertDialog
+import androidx.appcompat.app.AlertDialog
 import android.view.Gravity
 import android.view.View
 import android.widget.ImageView
@@ -78,7 +78,7 @@ class ItemDetailDialog(context: Context) : AlertDialog(context) {
 
         setView(contentViewLayout)
 
-        this.setButton(AlertDialog.BUTTON_NEGATIVE, context.getText(R.string.reward_dialog_dismiss)) { clickedDialog, _ -> clickedDialog.dismiss() }
+        this.setButton(BUTTON_NEGATIVE, context.getText(R.string.reward_dialog_dismiss)) { clickedDialog, _ -> clickedDialog.dismiss() }
     }
 
     fun setDescription(description: CharSequence) {

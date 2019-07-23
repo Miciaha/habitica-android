@@ -2,21 +2,17 @@ package com.habitrpg.android.habitica.ui.helpers
 
 import android.graphics.Color
 import android.text.Html
-
-import com.commonsware.cwac.anddown.AndDown
-
-import net.pherth.android.emoji_library.EmojiParser
-
 import android.text.Html.FROM_HTML_MODE_LEGACY
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
-import android.text.style.StyleSpan
+import com.commonsware.cwac.anddown.AndDown
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.functions.Consumer
 import io.reactivex.schedulers.Schedulers
+import net.pherth.android.emoji_library.EmojiParser
 import java.util.regex.Pattern
 
 /**
@@ -26,8 +22,7 @@ object MarkdownParser {
 
     private val processor = AndDown()
 
-    private val regex = Pattern.compile("@(?:\\w+)")
-    private val colorSpan = UsernameSpan()
+    private val regex = Pattern.compile("\\B@[-\\w]+")
 
     /**
      * Parses formatted markdown and returns it as styled CharSequence
@@ -48,10 +43,11 @@ object MarkdownParser {
 
         val matcher = regex.matcher(output)
         while (matcher.find()) {
+            val colorSpan = ForegroundColorSpan(Color.parseColor("#9A62FF"))
             output.setSpan(colorSpan, matcher.start(), matcher.end(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
 
-        return if (output.length >= 2) output.subSequence(0, output.length - 2) else output
+        return output.trimEnd('\n')
     }
 
     fun parseMarkdownAsync(input: String?, onSuccess: Consumer<CharSequence>) {

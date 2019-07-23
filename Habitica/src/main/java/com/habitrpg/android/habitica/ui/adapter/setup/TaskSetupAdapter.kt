@@ -3,15 +3,14 @@ package com.habitrpg.android.habitica.ui.adapter.setup
 import android.content.Context
 import android.graphics.PorterDuff
 import android.graphics.drawable.Drawable
-import android.support.graphics.drawable.VectorDrawableCompat
-import android.support.v4.content.ContextCompat
-import android.support.v7.widget.RecyclerView
+import androidx.vectordrawable.graphics.drawable.VectorDrawableCompat
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.RecyclerView
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import com.habitrpg.android.habitica.R
 import com.habitrpg.android.habitica.extensions.inflate
-import com.habitrpg.android.habitica.extensions.notNull
 import com.habitrpg.android.habitica.ui.helpers.bindView
 import java.util.*
 
@@ -61,7 +60,7 @@ class TaskSetupAdapter : RecyclerView.Adapter<TaskSetupAdapter.TaskViewHolder>()
             this.taskGroup = taskGroup
             this.isChecked = isChecked
 
-            taskGroup.notNull {
+            taskGroup?.let {
                 textView.text = it[0]
             }
             if (this.isChecked == true) {

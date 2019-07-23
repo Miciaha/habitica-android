@@ -1,24 +1,28 @@
 package com.habitrpg.android.habitica.ui.adapter.social
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Resources
 import android.graphics.drawable.BitmapDrawable
-import android.support.v4.content.ContextCompat
-import android.support.v7.widget.RecyclerView
 import android.text.method.LinkMovementMethod
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.RecyclerView
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.extensions.*
+import com.habitrpg.android.habitica.extensions.dpToPx
+import com.habitrpg.android.habitica.extensions.inflate
+import com.habitrpg.android.habitica.extensions.setScaledPadding
 import com.habitrpg.android.habitica.models.social.ChatMessage
 import com.habitrpg.android.habitica.models.user.User
 import com.habitrpg.android.habitica.ui.AvatarView
 import com.habitrpg.android.habitica.ui.helpers.DataBindingUtils
 import com.habitrpg.android.habitica.ui.helpers.MarkdownParser
 import com.habitrpg.android.habitica.ui.helpers.bindView
+import com.habitrpg.android.habitica.ui.views.HabiticaEmojiTextView
 import com.habitrpg.android.habitica.ui.views.HabiticaIconsHelper
 import com.habitrpg.android.habitica.ui.views.social.UsernameLabel
 import io.reactivex.BackpressureStrategy
@@ -29,9 +33,13 @@ import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import io.realm.OrderedRealmCollection
 import io.realm.RealmRecyclerViewAdapter
-import net.pherth.android.emoji_library.EmojiTextView
 
-class ChatRecyclerViewAdapter(data: OrderedRealmCollection<ChatMessage>?, autoUpdate: Boolean, private val user: User?, private val isTavern: Boolean, private val releasedUsernames: Boolean) : RealmRecyclerViewAdapter<ChatMessage, RecyclerView.ViewHolder>(data, autoUpdate) {
+class ChatRecyclerViewAdapter(data: OrderedRealmCollection<ChatMessage>?, autoUpdate: Boolean, user: User?, private val isTavern: Boolean) : RealmRecyclerViewAdapter<ChatMessage, RecyclerView.ViewHolder>(data, autoUpdate) {
+    internal var user = user
+    set(value) {
+        field = value
+        uuid = user?.id ?: ""
+    }
     private var uuid: String = ""
     private var expandedMessageId: String? = null
 
@@ -55,11 +63,11 @@ class ChatRecyclerViewAdapter(data: OrderedRealmCollection<ChatMessage>?, autoUp
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        data.notNull {
+        data?.let {
             if (it[position].isSystemMessage) {
                 (holder as? SystemChatMessageViewHolder)?.bind(it[position])
             } else {
-                (holder as? ChatRecyclerViewHolder)?.bind(it[position])
+                (holder as? ChatRecyclerViewHolder)?.bind(it[position], uuid)
             }
         }
     }
@@ -101,12 +109,12 @@ class ChatRecyclerViewAdapter(data: OrderedRealmCollection<ChatMessage>?, autoUp
 
     }
 
-    inner class ChatRecyclerViewHolder(itemView: View, private val userId: String, private val isTavern: Boolean) : RecyclerView.ViewHolder(itemView) {
+    inner class ChatRecyclerViewHolder(itemView: View, private var userId: String, private val isTavern: Boolean) : RecyclerView.ViewHolder(itemView) {
 
         private val messageWrapper: ViewGroup by bindView(R.id.message_wrapper)
         private val avatarView: AvatarView by bindView(R.id.avatar_view)
         private val userLabel: UsernameLabel by bindView(R.id.user_label)
-        private val messageText: EmojiTextView by bindView(R.id.message_text)
+        private val messageText: HabiticaEmojiTextView by bindView(R.id.message_text)
         private val sublineTextView: TextView by bindView(R.id.subline_textview)
         private val likeBackground: LinearLayout by bindView(R.id.like_background_layout)
         private val tvLikes: TextView by bindView(R.id.tvLikes)
@@ -125,60 +133,76 @@ class ChatRecyclerViewAdapter(data: OrderedRealmCollection<ChatMessage>?, autoUp
             itemView.setOnClickListener {
                 expandMessage()
             }
-            tvLikes.setOnClickListener { _ -> chatMessage.notNull { likeMessageEvents.onNext(it) } }
-            messageText.setOnClickListener { _ -> expandMessage() }
+            tvLikes.setOnClickListener { chatMessage?.let { likeMessageEvents.onNext(it) } }
+            messageText.setOnClickListener { expandMessage() }
             messageText.movementMethod = LinkMovementMethod.getInstance()
-            userLabel.setOnClickListener { _ -> chatMessage?.uuid.notNull {userLabelClickEvents.onNext(it) } }
-            replyButton.setOnClickListener { _ ->
-                if (releasedUsernames) {
-                    chatMessage?.username.notNull { replyMessageEvents.onNext(it) }
+            userLabel.setOnClickListener { chatMessage?.uuid?.let {userLabelClickEvents.onNext(it) } }
+            avatarView.setOnClickListener { chatMessage?.uuid?.let {userLabelClickEvents.onNext(it) } }
+            replyButton.setOnClickListener {
+                if (chatMessage?.username != null) {
+                    chatMessage?.username?.let { replyMessageEvents.onNext(it) }
                 } else {
-                    chatMessage?.user.notNull { replyMessageEvents.onNext(it) }
+                    chatMessage?.user?.let { replyMessageEvents.onNext(it) }
                 }
             }
             replyButton.setCompoundDrawablesWithIntrinsicBounds(BitmapDrawable(res, HabiticaIconsHelper.imageOfChatReplyIcon()),
                     null, null, null)
-            copyButton.setOnClickListener { _ -> chatMessage.notNull { copyMessageEvents.onNext(it) } }
+            copyButton.setOnClickListener { chatMessage?.let { copyMessageEvents.onNext(it) } }
             copyButton.setCompoundDrawablesWithIntrinsicBounds(BitmapDrawable(res, HabiticaIconsHelper.imageOfChatCopyIcon()),
                     null, null, null)
-            reportButton.setOnClickListener { _ -> chatMessage.notNull { flagMessageEvents.onNext(it) } }
+            reportButton.setOnClickListener { chatMessage?.let { flagMessageEvents.onNext(it) } }
             reportButton.setCompoundDrawablesWithIntrinsicBounds(BitmapDrawable(res, HabiticaIconsHelper.imageOfChatReportIcon()),
                     null, null, null)
-            deleteButton.setOnClickListener { _ -> chatMessage.notNull { deleteMessageEvents.onNext(it) } }
+            deleteButton.setOnClickListener { chatMessage?.let { deleteMessageEvents.onNext(it) } }
             deleteButton.setCompoundDrawablesWithIntrinsicBounds(BitmapDrawable(res, HabiticaIconsHelper.imageOfChatDeleteIcon()),
                     null, null, null)
         }
 
-        fun bind(msg: ChatMessage) {
+        fun bind(msg: ChatMessage, uuid: String) {
             chatMessage = msg
+            userId = uuid
 
             setLikeProperties()
 
+            val wasSent = messageWasSent()
+
             val name = user?.profile?.name
-            if (messageWasSent() && user != null) {
-                userLabel.tier = user.contributor?.level ?: 0
+            if (wasSent) {
+                userLabel.tier = user?.contributor?.level ?: 0
                 userLabel.username = name
+                if (user?.username != null) {
+                    @SuppressLint("SetTextI18n")
+                    sublineTextView.text = "${user?.formattedUsername} ∙ ${msg.getAgoString(res)}"
+                } else {
+                    sublineTextView.text = msg.getAgoString(res)
+                }
             } else {
                 userLabel.tier = msg.contributor?.level ?: 0
                 userLabel.username = msg.user
+                if (msg.username != null) {
+                    @SuppressLint("SetTextI18n")
+                    sublineTextView.text = "${msg.formattedUsername} ∙ ${msg.getAgoString(res)}"
+                } else {
+                    sublineTextView.text = msg.getAgoString(res)
+                }
             }
             when {
                 userLabel.tier == 8 -> {
                     modView.visibility = View.VISIBLE
                     modView.text = context.getString(R.string.moderator)
-                    modView.backgroundCompat = ContextCompat.getDrawable(context, R.drawable.pill_bg_blue)
+                    modView.background = ContextCompat.getDrawable(context, R.drawable.pill_bg_blue)
                     modView.setScaledPadding(context, 12, 4, 12, 4)
                 }
                 userLabel.tier == 9 -> {
                     modView.visibility = View.VISIBLE
                     modView.text = context.getString(R.string.staff)
-                    modView.backgroundCompat = ContextCompat.getDrawable(context, R.drawable.pill_bg_purple_300)
+                    modView.background = ContextCompat.getDrawable(context, R.drawable.pill_bg_purple_300)
                     modView.setScaledPadding(context, 12, 4, 12, 4)
                 }
                 else -> modView.visibility = View.GONE
             }
 
-            if (messageWasSent()) {
+            if (wasSent) {
                 avatarView.visibility = View.GONE
                 itemView.setPadding(64.dpToPx(context), itemView.paddingTop, itemView.paddingRight, itemView.paddingBottom)
             } else {
@@ -186,7 +210,7 @@ class ChatRecyclerViewAdapter(data: OrderedRealmCollection<ChatMessage>?, autoUp
                 val dpWidth = displayMetrics.widthPixels / displayMetrics.density
                 if (dpWidth > 350) {
                     avatarView.visibility = View.VISIBLE
-                    msg.userStyles.notNull {
+                    msg.userStyles?.let {
                         avatarView.setAvatar(it)
                     }
                 } else {
@@ -208,25 +232,18 @@ class ChatRecyclerViewAdapter(data: OrderedRealmCollection<ChatMessage>?, autoUp
                         }, { it.printStackTrace() })
             }
 
-            val username = user?.username
-            if ((name != null && msg.text?.contains(name) == true) || (username != null && msg.text?.contains(username) == true)) {
-                messageWrapper.backgroundCompat = ContextCompat.getDrawable(context, R.drawable.layout_rounded_bg_brand_700)
+            val username = user?.formattedUsername
+            messageWrapper.background = if ((name != null && msg.text?.contains("@$name") == true) || (username != null && msg.text?.contains(username) == true)) {
+                ContextCompat.getDrawable(context, R.drawable.layout_rounded_bg_brand_700)
             } else {
-                messageWrapper.backgroundCompat = ContextCompat.getDrawable(context, R.drawable.layout_rounded_bg)
+                ContextCompat.getDrawable(context, R.drawable.layout_rounded_bg)
             }
             messageWrapper.setScaledPadding(context, 8, 8, 8, 8)
-
-            if (msg.username != null && releasedUsernames) {
-                sublineTextView.text = "${msg.formattedUsername} ∙ ${msg.getAgoString(res)}"
-            } else {
-                sublineTextView.text = msg.getAgoString(res)
-            }
 
             if (expandedMessageId == msg.id) {
                 buttonsWrapper.visibility = View.VISIBLE
                 deleteButton.visibility = if (shouldShowDelete()) View.VISIBLE else View.GONE
                 replyButton.visibility = if (chatMessage?.isInboxMessage == true) View.GONE else View.VISIBLE
-                reportButton.visibility = if (chatMessage?.uuid == userId) View.GONE else View.VISIBLE
             } else {
                 buttonsWrapper.visibility = View.GONE
             }
@@ -238,6 +255,7 @@ class ChatRecyclerViewAdapter(data: OrderedRealmCollection<ChatMessage>?, autoUp
 
         private fun setLikeProperties() {
             likeBackground.visibility = if (isTavern) View.VISIBLE else View.INVISIBLE
+            @SuppressLint("SetTextI18n")
             tvLikes.text = "+" + chatMessage?.likeCount
 
             val backgroundColorRes: Int
@@ -261,7 +279,7 @@ class ChatRecyclerViewAdapter(data: OrderedRealmCollection<ChatMessage>?, autoUp
         }
 
         private fun shouldShowDelete(): Boolean {
-            return chatMessage?.isSystemMessage != true && (chatMessage?.uuid == userId || user?.contributor?.admin == true)
+            return chatMessage?.isSystemMessage != true && (chatMessage?.uuid == userId || user?.contributor?.admin == true || chatMessage?.isInboxMessage == true)
         }
 
         private fun expandMessage() {

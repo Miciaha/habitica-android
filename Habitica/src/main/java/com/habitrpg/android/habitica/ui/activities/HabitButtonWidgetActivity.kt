@@ -4,13 +4,13 @@ import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
-import android.support.v7.preference.PreferenceManager
-import android.support.v7.widget.LinearLayoutManager
-import android.support.v7.widget.RecyclerView
+import androidx.core.content.edit
+import androidx.preference.PreferenceManager
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.TaskRepository
-import com.habitrpg.android.habitica.extensions.notNull
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.modules.AppModule
@@ -36,7 +36,7 @@ class HabitButtonWidgetActivity : BaseActivity() {
         return R.layout.widget_configure_habit_button
     }
 
-    override fun injectActivity(component: AppComponent?) {
+    override fun injectActivity(component: UserComponent?) {
         component?.inject(this)
     }
 
@@ -66,10 +66,10 @@ class HabitButtonWidgetActivity : BaseActivity() {
         adapter = SkillTasksRecyclerViewAdapter(null, true)
         adapter?.getTaskSelectionEvents()?.subscribe(Consumer { task -> taskSelected(task.id) },
                 RxErrorHandler.handleEmptyError())
-                .notNull { compositeSubscription.add(it) }
+                ?.let { compositeSubscription.add(it) }
         recyclerView.adapter = adapter
 
-        taskRepository.getTasks(Task.TYPE_HABIT, userId).firstElement().subscribe(Consumer { adapter?.updateData(it) }, RxErrorHandler.handleEmptyError())
+        compositeSubscription.add(taskRepository.getTasks(Task.TYPE_HABIT, userId).firstElement().subscribe(Consumer { adapter?.updateData(it) }, RxErrorHandler.handleEmptyError()))
     }
 
     private fun taskSelected(taskId: String?) {
@@ -90,8 +90,8 @@ class HabitButtonWidgetActivity : BaseActivity() {
     }
 
     private fun storeSelectedTaskId(selectedTaskId: String?) {
-        val preferences = PreferenceManager.getDefaultSharedPreferences(this).edit()
-        preferences.putString("habit_button_widget_$widgetId", selectedTaskId)
-        preferences.apply()
+        PreferenceManager.getDefaultSharedPreferences(this).edit {
+            putString("habit_button_widget_$widgetId", selectedTaskId)
+        }
     }
 }

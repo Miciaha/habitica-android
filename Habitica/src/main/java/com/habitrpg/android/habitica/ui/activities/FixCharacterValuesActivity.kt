@@ -2,11 +2,11 @@ package com.habitrpg.android.habitica.ui.activities
 
 import android.app.ProgressDialog
 import android.os.Bundle
-import android.support.v4.content.ContextCompat
+import androidx.core.content.ContextCompat
 import android.view.Menu
 import android.view.MenuItem
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.UserRepository
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.models.user.Stats
@@ -30,7 +30,7 @@ class FixCharacterValuesActivity: BaseActivity() {
 
     override fun getLayoutResId(): Int = R.layout.activity_fixcharacter
 
-    override fun injectActivity(component: AppComponent?) {
+    override fun injectActivity(component: UserComponent?) {
         component?.inject(this)
     }
 

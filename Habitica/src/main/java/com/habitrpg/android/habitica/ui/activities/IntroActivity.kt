@@ -1,22 +1,18 @@
 package com.habitrpg.android.habitica.ui.activities
 
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentManager
-import android.support.v4.app.FragmentPagerAdapter
-import android.support.v4.content.ContextCompat
-import android.support.v4.content.res.ResourcesCompat
-import android.support.v4.view.ViewPager
 import android.view.View
-import android.view.WindowManager
 import android.widget.Button
-import com.habitrpg.android.habitica.HabiticaBaseApplication
+import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentPagerAdapter
+import androidx.viewpager.widget.ViewPager
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.ContentRepository
-import com.habitrpg.android.habitica.data.InventoryRepository
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.ui.fragments.setup.IntroFragment
 import com.habitrpg.android.habitica.ui.helpers.bindView
@@ -28,7 +24,7 @@ import javax.inject.Inject
 class IntroActivity : BaseActivity(), View.OnClickListener, ViewPager.OnPageChangeListener {
 
     @Inject
-    lateinit var contentRepository: InventoryRepository
+    lateinit var contentRepository: ContentRepository
 
     private val pager: ViewPager by bindView(R.id.viewPager)
     private val indicator: IconPageIndicator by bindView(R.id.view_pager_indicator)
@@ -48,19 +44,10 @@ class IntroActivity : BaseActivity(), View.OnClickListener, ViewPager.OnPageChan
         this.skipButton.setOnClickListener(this)
         this.finishButton.setOnClickListener(this)
 
-        contentRepository.retrieveContent().subscribe(Consumer { }, RxErrorHandler.handleEmptyError())
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            val window = window
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                window.statusBarColor = ContextCompat.getColor(this, R.color.black_20_alpha)
-            }
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
-        }
-
+        compositeSubscription.add(contentRepository.retrieveContent(this).subscribe(Consumer { }, RxErrorHandler.handleEmptyError()))
     }
 
-    override fun injectActivity(component: AppComponent?) {
+    override fun injectActivity(component: UserComponent?) {
         component?.inject(this)
     }
 

@@ -11,6 +11,7 @@ import com.habitrpg.android.habitica.models.shops.Shop
 import com.habitrpg.android.habitica.models.shops.ShopItem
 import com.habitrpg.android.habitica.models.social.Challenge
 import com.habitrpg.android.habitica.models.social.ChatMessage
+import com.habitrpg.android.habitica.models.social.FindUsernameResult
 import com.habitrpg.android.habitica.models.social.Group
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.models.tasks.TaskList
@@ -19,7 +20,6 @@ import com.habitrpg.android.habitica.models.user.Stats
 import com.habitrpg.android.habitica.models.user.User
 import io.reactivex.Flowable
 import io.reactivex.FlowableTransformer
-import io.reactivex.ObservableTransformer
 import retrofit2.HttpException
 
 
@@ -40,7 +40,7 @@ interface ApiClient {
 
     /* challenges api */
 
-    val userChallenges: Flowable<List<Challenge>>
+    fun getUserChallenges(page: Int, memberOnly: Boolean): Flowable<List<Challenge>>
 
     val worldState: Flowable<WorldState>
     fun setLanguageCode(languageCode: String)
@@ -65,6 +65,7 @@ interface ApiClient {
 
     fun purchaseQuest(key: String): Flowable<Any>
     fun validateSubscription(request: SubscriptionValidationRequest): Flowable<Any>
+    fun validateNoRenewSubscription(request: PurchaseValidationRequest): Flowable<Any>
 
     fun sellItem(itemType: String, itemKey: String): Flowable<User>
 
@@ -127,6 +128,7 @@ interface ApiClient {
 
     fun getGroup(groupId: String): Flowable<Group>
 
+    fun createGroup(group: Group): Flowable<Group>
     fun updateGroup(id: String, item: Group): Flowable<Void>
 
     fun listGroupChat(groupId: String): Flowable<List<ChatMessage>>
@@ -138,6 +140,7 @@ interface ApiClient {
     fun postGroupChat(groupId: String, message: Map<String, String>): Flowable<PostChatMessageResult>
 
     fun deleteMessage(groupId: String, messageId: String): Flowable<Void>
+    fun deleteInboxMessage(id: String): Flowable<Void>
 
     fun getGroupMembers(groupId: String, includeAllPublicFields: Boolean?): Flowable<List<Member>>
 
@@ -146,7 +149,7 @@ interface ApiClient {
     // Like returns the full chat list
     fun likeMessage(groupId: String, mid: String): Flowable<ChatMessage>
 
-    fun flagMessage(groupId: String, mid: String): Flowable<Void>
+    fun flagMessage(groupId: String, mid: String, data: MutableMap<String, String>): Flowable<Void>
 
     fun seenMessages(groupId: String): Flowable<Void>
 
@@ -174,8 +177,9 @@ interface ApiClient {
 
     //Members URL
     fun getMember(memberId: String): Flowable<Member>
+    fun getMemberWithUsername(username: String): Flowable<Member>
 
-    fun getMemberAchievements(memberId: String): Flowable<AchievementResult>
+    fun getMemberAchievements(memberId: String): Flowable<List<Achievement>>
 
     fun postPrivateMessage(messageDetails: Map<String, String>): Flowable<PostChatMessageResult>
 
@@ -208,6 +212,8 @@ interface ApiClient {
 
     // Notifications
     fun readNotification(notificationId: String): Flowable<List<*>>
+    fun readNotifications(notificationIds: Map<String, List<String>>): Flowable<List<*>>
+    fun seeNotifications(notificationIds: Map<String, List<String>>): Flowable<List<*>>
 
     fun getErrorResponse(throwable: HttpException): ErrorResponse
 
@@ -236,7 +242,7 @@ interface ApiClient {
 
     fun updateEmail(newEmail: String, password: String): Flowable<Void>
 
-    fun updatePassword(newPassword: String, oldPassword: String, oldPasswordConfirmation: String): Flowable<Void>
+    fun updatePassword(oldPassword: String, newPassword: String, newPasswordConfirmation: String): Flowable<Void>
 
     fun allocatePoint(stat: String): Flowable<Stats>
 
@@ -244,4 +250,6 @@ interface ApiClient {
 
     fun retrieveMarketGear(): Flowable<Shop>
     fun verifyUsername(username: String): Flowable<VerifyUsernameResponse>
+    fun updateServerUrl(newAddress: String?)
+    fun findUsernames(username: String, context: String?, id: String?): Flowable<List<FindUsernameResult>>
 }

@@ -20,11 +20,6 @@
         <item>@string/repeatables_frequency_monthly</item>
     </string-array>
 
-    <string-array name="daily_frequencies">
-        <item>@string/frequency_weekly</item>
-        <item>@string/frequency_daily</item>
-    </string-array>
-
     <string-array name="repeatables_frequencies">
         <item>@string/repeatables_frequency_daily</item>
         <item>@string/repeatables_frequency_weekly</item>
@@ -70,7 +65,7 @@
         <item>Español</item>
         <item>Français</item>
         <item>עברית</item>
-        <item>Magyar</item>
+        <item>Hrvatski</item>
         <item>Bahasa Indonesia</item>
         <item>Italiano</item>
         <item>日本語</item>
@@ -82,6 +77,7 @@
         <item>Türk</item>
         <item>中文（简体）</item>
         <item>中文（正體）</item>
+        <item>한국어</item>
     </string-array>
 
     <string-array name="LanguageValues">
@@ -104,6 +100,7 @@
         <item>tr</item>
         <item>zh</item>
         <item>zh_TW</item>
+        <item>ko</item>
     </string-array>
 
 
@@ -128,5 +125,14 @@
         <item>dewinTheme</item>
         <item>airuTheme</item>
     </string-array>
+
+    <string-array name="server_urls">
+        <item>https://habitica.com</item>
+        <item>https://habitrpg-staging.herokuapp.com</item>
+        <item>https://habitrpg-beta.herokuapp.com</item>
+        <item>https://habitrpg-gamma.herokuapp.com</item>
+        <item>https://habitrpg-delta.herokuapp.com</item>
+    </string-array>
+
     <string name="frequency_monthly">Monthly</string>
 </resources>

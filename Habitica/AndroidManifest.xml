@@ -2,8 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.habitrpg.android.habitica"
-    android:versionCode="1998"
-    android:versionName="1.6"
     android:screenOrientation="portrait"
     android:installLocation="auto" >
 
@@ -16,6 +14,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" tools:node="remove" />
+
 
     <application
         android:name=".HabiticaApplication"
@@ -24,23 +24,50 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:theme="@style/AppTheme"
-            tools:replace="android:name"
-        android:fullBackupContent="@xml/backup_descriptor">
+        tools:replace="android:name"
+        android:fullBackupContent="@xml/backup_descriptor"
+        android:configChanges="orientation"
+        android:networkSecurityConfig="@xml/network_security_config">
+        <meta-data
+            android:name="firebase_performance_logcat_enabled"
+            android:value="true" />
         <activity
             android:name=".ui.activities.MainActivity"
             android:label="@string/app_name"
-            android:theme="@style/AppTheme.NoActionBar.Transparent"
-            android:windowSoftInputMode="stateHidden|adjustResize"
-            android:screenOrientation="portrait">
+            android:theme="@style/MainAppTheme"
+            android:windowSoftInputMode="stateHidden|adjustResize">
+            <nav-graph android:value="@navigation/navigation" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                    android:host="habitica.com"
+                    android:pathPattern="/"/>
             </intent-filter>
         </activity>
         <activity
             android:name=".ui.activities.PrefsActivity"
             android:parentActivityName=".ui.activities.MainActivity"
             android:label="@string/PS_settings_title"
+            tools:ignore="UnusedAttribute">
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                    android:host="habitica.com"
+                    android:pathPattern="/settings/.*"/>
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".ui.activities.NotificationsActivity"
+            android:parentActivityName=".ui.activities.MainActivity"
+            android:label="@string/notifications"
             android:screenOrientation="portrait"
             tools:ignore="UnusedAttribute">
         </activity>
@@ -48,36 +75,38 @@
             android:name=".ui.activities.FixCharacterValuesActivity"
             android:parentActivityName=".ui.activities.PrefsActivity"
             android:label="@string/PS_settings_title"
-            android:screenOrientation="portrait"
             tools:ignore="UnusedAttribute">
         </activity>
         <activity
             android:name=".ui.activities.LoginActivity"
             android:label="@string/LoginActivityName"
-            android:theme="@style/AppTheme.NoActionBar.Transparent"
-            android:windowSoftInputMode="adjustResize"
-            android:screenOrientation="portrait">
+            android:theme="@style/AppTheme.NoActionBar"
+            android:windowSoftInputMode="adjustResize">
         </activity>
         <activity
             android:name=".ui.activities.IntroActivity"
-            android:theme="@style/AppTheme.NoActionBar.Transparent"
-            android:windowSoftInputMode="adjustResize"
-            android:screenOrientation="portrait">
+            android:theme="@style/AppTheme.NoActionBar"
+            android:windowSoftInputMode="adjustResize">
         </activity>
         <activity
             android:name=".ui.activities.SetupActivity"
-            android:windowSoftInputMode="adjustResize"
-            android:screenOrientation="portrait">
+            android:windowSoftInputMode="stateHidden|adjustResize">
         </activity>
         <activity
             android:name=".ui.activities.SkillTasksActivity"
-            android:label="@string/app_name"
-            android:screenOrientation="portrait">
+            android:label="@string/app_name">
         </activity>
         <activity
             android:name=".ui.activities.SkillMemberActivity"
-            android:label="@string/app_name"
-            android:screenOrientation="portrait">
+            android:label="@string/app_name">
+        </activity>
+        <activity
+            android:name=".ui.activities.GiftIAPActivity"
+            android:label="@string/gift_subscription">
+        </activity>
+        <activity
+            android:name=".ui.activities.GuidelinesActivity"
+            android:label="@string/community_guidelines">
         </activity>
 
         <meta-data android:name="com.facebook.sdk.ApplicationId" android:value="@string/facebook_app_id"/>
@@ -86,23 +115,20 @@
                 android:value="false"/>
         <activity
             android:name=".ui.activities.AboutActivity"
-            android:theme="@style/AppThemeWithActionBarBlackText"
-            android:screenOrientation="portrait"/>
+            android:theme="@style/AppThemeWithActionBarBlackText"/>
         <activity
             android:name=".ui.activities.TaskFormActivity"
-            android:theme="@style/AppThemeWithActionBarBlackText"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:screenOrientation="portrait"
-            tools:ignore="UnusedAttribute">
+            tools:ignore="UnusedAttribute"
+            android:windowSoftInputMode="stateVisible|adjustResize">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".ui.activities.MainActivity" />
         </activity>
         <activity
             android:name=".ui.activities.GroupFormActivity"
-            android:theme="@style/AppThemeWithActionBarBlackText"
+            android:theme="@style/AppTheme.NoActionBar"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:screenOrientation="portrait"
             tools:ignore="UnusedAttribute">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
@@ -110,9 +136,7 @@
         </activity>
         <activity
             android:name=".ui.activities.ClassSelectionActivity"
-            android:theme="@style/AppThemeWithActionBarBlackText"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:screenOrientation="portrait"
             tools:ignore="UnusedAttribute"
             android:label="@string/select_class">
             <meta-data
@@ -120,37 +144,31 @@
                 android:value=".ui.activities.MainActivity" />
         </activity>
         <activity
-            android:name=".ui.activities.PartyInviteActivity"
+            android:name=".ui.activities.GroupInviteActivity"
             android:theme="@style/AppThemeWithActionBarBlackText"
-            android:screenOrientation="portrait"
-            tools:ignore="UnusedAttribute"
-            android:label="@string/invite_users">
+            tools:ignore="UnusedAttribute">
         </activity>
         <activity
             android:name=".ui.activities.FullProfileActivity"
             android:theme="@style/AppThemeWithActionBarBlackText"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:screenOrientation="portrait"
             tools:ignore="UnusedAttribute">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".ui.activities.MainActivity" />
-        </activity>
-        <activity
-            android:name=".ui.activities.ChallengeDetailActivity"
-            android:parentActivityName=".ui.activities.MainActivity"
-            android:screenOrientation="portrait"
-            android:launchMode="singleTask"
-            tools:ignore="UnusedAttribute">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value=".ui.activities.MainActivity" />
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                    android:host="habitica.com"
+                    android:pathPattern="/profile/.*"/>
+            </intent-filter>
         </activity>
         <activity
             android:name=".ui.activities.ChallengeFormActivity"
             android:theme="@style/AppTheme.ActionBar"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask"
             tools:ignore="UnusedAttribute">
             <meta-data
@@ -168,11 +186,9 @@
         <activity android:name=".ui.activities.VerifyUsernameActivity"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="stateHidden" />
-        <receiver  android:process=":remote" android:name=".receivers.NotificationPublisher" />
+        <receiver android:name=".receivers.NotificationPublisher" />
 
-        <receiver
-                android:process=":remote"
-                android:name=".receivers.TaskReceiver"/>
+        <receiver android:name=".receivers.TaskReceiver"/>
 
         <receiver android:name=".receivers.LocalNotificationActionReceiver"
             android:exported="false">
@@ -199,6 +215,11 @@
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE"/>
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.activities.ReportMessageActivity"
+            android:theme="@style/BottomSheetTheme"
+            android:windowSoftInputMode="stateHidden|adjustResize">
+        </activity>
         <service
             android:name=".helpers.notifications.HabiticaFirebaseMessagingService"
             android:exported="false">
@@ -215,7 +236,7 @@
         </service>
 
         <provider
-            android:name="android.support.v4.content.FileProvider"
+            android:name="androidx.core.content.FileProvider"
             android:authorities="@string/content_provider"
             android:grantUriPermissions="true"
             android:exported="false">

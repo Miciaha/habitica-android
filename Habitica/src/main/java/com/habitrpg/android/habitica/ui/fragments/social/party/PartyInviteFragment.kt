@@ -10,9 +10,8 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
-import com.habitrpg.android.habitica.helpers.RemoteConfigManager
-import com.habitrpg.android.habitica.prefs.scanner.IntentIntegrator
+import com.habitrpg.android.habitica.components.UserComponent
+import com.habitrpg.android.habitica.helpers.AppConfigManager
 import com.habitrpg.android.habitica.ui.fragments.BaseFragment
 import com.habitrpg.android.habitica.ui.helpers.bindView
 import com.habitrpg.android.habitica.ui.helpers.resetViews
@@ -22,7 +21,7 @@ import javax.inject.Inject
 class PartyInviteFragment : BaseFragment() {
 
     @Inject
-    lateinit var configManager: RemoteConfigManager
+    lateinit var configManager: AppConfigManager
 
     var isEmailInvite: Boolean = false
 
@@ -52,12 +51,9 @@ class PartyInviteFragment : BaseFragment() {
 
         resetViews()
 
-        if (isEmailInvite) {
-            inviteDescription?.text = getString(R.string.invite_email_description)
-        } else if (configManager.enableUsernameRelease()) {
-            inviteDescription?.text = getString(R.string.invite_username_description)
-        } else {
-            inviteDescription?.text = getString(R.string.invite_id_description)
+        when {
+            isEmailInvite -> inviteDescription?.text = getString(R.string.invite_email_description)
+            else -> inviteDescription?.text = getString(R.string.invite_username_description)
         }
 
         addInviteField()
@@ -65,20 +61,19 @@ class PartyInviteFragment : BaseFragment() {
         addInviteButton?.setOnClickListener { addInviteField() }
     }
 
-    override fun injectFragment(component: AppComponent) {
+    override fun injectFragment(component: UserComponent) {
         component.inject(this)
     }
 
     private fun addInviteField() {
         val editText = EditText(context)
 
-        if (isEmailInvite) {
-            editText.setHint(R.string.email)
-            editText.inputType = InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
-        } else if (configManager.enableUsernameRelease()) {
-            editText.setHint(R.string.username)
-        } else {
-            editText.setHint(R.string.user_id)
+        when {
+            isEmailInvite -> {
+                editText.setHint(R.string.email)
+                editText.inputType = InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+            }
+            else -> editText.setHint(R.string.username)
         }
         invitationWrapper?.addView(editText)
     }

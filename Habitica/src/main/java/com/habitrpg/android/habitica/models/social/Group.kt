@@ -13,44 +13,29 @@ open class Group : RealmObject() {
     @SerializedName("_id")
     @PrimaryKey
     var id: String = ""
-
     var balance: Double = 0.toDouble()
-
     var description: String? = null
-
+    var summary: String? = null
     var leaderID: String? = null
-
     var leaderName: String? = null
-
     var name: String? = null
-
     var memberCount: Int = 0
-
     var type: String? = null
-
     var logo: String? = null
-
     var quest: Quest? = null
-
     var privacy: String? = null
-
     var members: RealmList<User>? = null
-
     var challengeCount: Int = 0
-
     var leaderMessage: String? = null
+    var leaderOnlyChallenges: Boolean = false
+    var leaderOnlyGetGems: Boolean = false
 
     override fun equals(other: Any?): Boolean {
         if (this === other) {
             return true
         }
-        if (other == null || javaClass != other.javaClass) {
-            return false
-        }
-
-        val group = other as Group
-
-        return id == group.id
+        val group = other as? Group
+        return id == group?.id
 
     }
 
@@ -65,5 +50,10 @@ open class Group : RealmObject() {
     val hasActiveQuest: Boolean
     get() {
         return quest?.active ?: false
+    }
+
+    val gemCount: Int
+    get() {
+        return (balance * 4.0).toInt()
     }
 }

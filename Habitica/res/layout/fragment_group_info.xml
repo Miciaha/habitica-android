@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.v4.widget.SwipeRefreshLayout  xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.swiperefreshlayout.widget.SwipeRefreshLayout  xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:id="@+id/refreshLayout">
-    <android.support.v4.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/refreshLayout"
+    android:background="@color/white">
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scrollbarSize="3dp"
@@ -15,7 +16,7 @@
             android:orientation="vertical"
             android:paddingBottom="?android:actionBarSize">
 
-            <android.support.v7.widget.CardView
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 style="@style/CardView.Default"
@@ -34,7 +35,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_gravity="right">
+                        android:layout_gravity="end">
 
                         <Button
                             android:id="@+id/buttonPartyInviteAccept"
@@ -53,13 +54,33 @@
                             style="?android:buttonBarButtonStyle" />
                     </LinearLayout>
                 </LinearLayout>
-            </android.support.v7.widget.CardView>
+            </androidx.cardview.widget.CardView>
 
             <LinearLayout
                 android:id="@+id/noPartyWrapper"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="158dp"
+                    android:layout_marginBottom="@dimen/spacing_medium">
+                    <ImageView
+                        android:id="@+id/no_party_background"
+                        android:layout_width="match_parent"
+                        android:layout_height="124dp"
+                        android:layout_alignParentTop="true"/>
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="124dp"
+                        android:background="@drawable/no_party_background_gradient"/>
+                    <ImageView
+                        android:layout_width="332dp"
+                        android:layout_height="146dp"
+                        android:layout_marginTop="12dp"
+                        android:layout_centerHorizontal="true"
+                        android:src="@drawable/no_party_banner"/>
+                </RelativeLayout>
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -68,28 +89,30 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        style="@style/Title1"
+                        style="@style/Headline"
+                        android:textSize="16sp"
+                        android:textColor="@color/gray_200"
                         android:text="@string/no_party_title"
-                        android:gravity="center"/>
+                        android:gravity="center"
+                        android:layout_marginBottom="@dimen/spacing_medium"/>
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        style="@style/Body1"
+                        style="@style/Body2"
                         android:text="@string/no_party_description"
                         android:textColor="@color/gray_300"
-                        android:gravity="center"/>
+                        android:gravity="center"
+                        android:layout_marginLeft="@dimen/spacing_large"
+                        android:layout_marginRight="@dimen/spacing_large"/>
                     <Button
                         android:id="@+id/craetePartyButton"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         style="@style/HabiticaButton.Gray.600"
-                        android:text="@string/create_party_website"
+                        android:background="@drawable/layout_rounded_bg_gray_700"
+                        android:text="@string/create_party"
                         android:layout_marginTop="@dimen/spacing_large"/>
                 </LinearLayout>
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/gray_500"/>
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -98,17 +121,21 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        style="@style/Title2"
+                        style="@style/Headline"
+                        android:textSize="16sp"
                         android:text="@string/join_party_title"
-                        android:gravity="center"/>
+                        android:gravity="center"
+                        android:layout_marginBottom="@dimen/spacing_medium"/>
                     <TextView
                         android:id="@+id/join_party_description_textview"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        style="@style/Body1"
+                        style="@style/Body2"
                         android:text="@string/join_party_description"
                         android:textColor="@color/gray_300"
-                        android:gravity="center"/>
+                        android:gravity="center"
+                        android:layout_marginLeft="@dimen/spacing_large"
+                        android:layout_marginRight="@dimen/spacing_large"/>
 
                     <Button
                         android:id="@+id/username_textview"
@@ -116,7 +143,7 @@
                         android:layout_height="wrap_content"
                         android:textColor="@color/brand_400"
                         style="@style/HabiticaButton.Gray.600"
-                        android:gravity="center"
+                        android:background="@drawable/layout_rounded_bg_gray_700"
                         android:layout_marginTop="@dimen/spacing_large"
                         android:layout_marginBottom="@dimen/spacing_large"/>
 
@@ -129,7 +156,7 @@
                 android:layout_height="wrap_content"
                 style="@style/SectionTitle"/>
 
-            <android.support.v7.widget.CardView
+            <androidx.cardview.widget.CardView
                 android:id="@+id/groupDescriptionWrapper"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -139,40 +166,27 @@
                     android:layout_height="wrap_content"
                     style="@style/CardContent"
                     android:divider="?android:listDivider"
+                    android:dividerPadding="@dimen/spacing_medium"
                     android:showDividers="middle"
                     android:orientation="vertical">
 
-                    <net.pherth.android.emoji_library.EmojiTextView
+                    <com.habitrpg.android.habitica.ui.views.HabiticaEmojiTextView
+                        android:id="@+id/groupSummaryView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:padding="@dimen/spacing_medium" />
+
+                    <com.habitrpg.android.habitica.ui.views.HabiticaEmojiTextView
                         android:id="@+id/groupDescriptionView"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
-
-                    <LinearLayout
-                        android:id="@+id/leadernameWrapper"
-                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical">
-                        <TextView
-                            android:id="@+id/leadernameTextView"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:id="@+id/leaderMessageWrapper"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-                        <net.pherth.android.emoji_library.EmojiTextView
-                            android:id="@+id/leaderMessageTextView"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"/>
-                    </LinearLayout>
+                        android:padding="@dimen/spacing_medium"/>
                     <LinearLayout
                         android:id="@+id/gemCountWrapper"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal">
+                        android:orientation="horizontal"
+                        android:padding="@dimen/spacing_medium">
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
@@ -185,7 +199,7 @@
                     </LinearLayout>
                 </LinearLayout>
 
-            </android.support.v7.widget.CardView>
+            </androidx.cardview.widget.CardView>
         </LinearLayout>
-    </android.support.v4.widget.NestedScrollView>
-</android.support.v4.widget.SwipeRefreshLayout>
+    </androidx.core.widget.NestedScrollView>
+</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

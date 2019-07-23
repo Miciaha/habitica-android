@@ -2,6 +2,7 @@ package com.habitrpg.android.habitica.helpers.notifications
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.google.firebase.iid.FirebaseInstanceId
 import com.google.firebase.messaging.RemoteMessage
 import com.habitrpg.android.habitica.data.ApiClient
@@ -20,9 +21,9 @@ class PushNotificationManager(var apiClient: ApiClient, private val sharedPrefer
         }
 
         field = value
-        val editor = sharedPreferences.edit()
-        editor.putString(DEVICE_TOKEN_PREFERENCE_KEY, value)
-        editor.apply()
+        sharedPreferences.edit {
+            putString(DEVICE_TOKEN_PREFERENCE_KEY, value)
+        }
     }
     private var user: User? = null
 
@@ -119,6 +120,8 @@ class PushNotificationManager(var apiClient: ApiClient, private val sharedPrefer
         const val QUEST_BEGUN_PUSH_NOTIFICATION_KEY = "questStarted"
         const val WON_CHALLENGE_PUSH_NOTIFICATION_KEY = "wonChallenge"
         const val CHANGE_USERNAME_PUSH_NOTIFICATION_KEY = "changeUsername"
+        const val GIFT_ONE_GET_ONE_PUSH_NOTIFICATION_KEY = "gift1get1"
+        const val CHAT_MENTION_NOTIFICATION_KEY = "chatMention"
         private const val DEVICE_TOKEN_PREFERENCE_KEY = "device-token-preference"
     }
 }

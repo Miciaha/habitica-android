@@ -1,14 +1,14 @@
 package com.habitrpg.android.habitica.ui.fragments.skills
 
 import android.os.Bundle
-import android.support.v7.widget.LinearLayoutManager
-import android.support.v7.widget.RecyclerView
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.TaskRepository
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.models.tasks.Task
@@ -45,14 +45,14 @@ class SkillTasksRecyclerViewFragment : BaseFragment() {
         return container?.inflate(R.layout.fragment_recyclerview)
     }
 
-    override fun injectFragment(component: AppComponent) {
+    override fun injectFragment(component: UserComponent) {
         component.inject(this)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        taskRepository.getTasks(taskType ?: "", userId).firstElement().subscribe(Consumer { tasks -> adapter.updateData(tasks) }, RxErrorHandler.handleEmptyError())
+        compositeSubscription.add(taskRepository.getTasks(taskType ?: "", userId).firstElement().subscribe(Consumer { tasks -> adapter.updateData(tasks) }, RxErrorHandler.handleEmptyError()))
         recyclerView?.adapter = adapter
 
         layoutManager = recyclerView?.layoutManager as? LinearLayoutManager

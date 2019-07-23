@@ -1,19 +1,19 @@
 package com.habitrpg.android.habitica.ui.fragments.inventory.stable
 
 import android.os.Bundle
-import android.support.v7.widget.GridLayoutManager
-import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.InventoryRepository
 import com.habitrpg.android.habitica.events.commands.FeedCommand
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.models.inventory.Mount
 import com.habitrpg.android.habitica.models.inventory.Pet
 import com.habitrpg.android.habitica.models.user.Items
+import com.habitrpg.android.habitica.models.user.OwnedMount
+import com.habitrpg.android.habitica.models.user.OwnedPet
 import com.habitrpg.android.habitica.ui.adapter.inventory.PetDetailRecyclerAdapter
 import com.habitrpg.android.habitica.ui.fragments.BaseMainFragment
 import com.habitrpg.android.habitica.ui.fragments.inventory.items.ItemRecyclerFragment
@@ -31,12 +31,12 @@ class PetDetailRecyclerFragment : BaseMainFragment() {
     @Inject
     lateinit var inventoryRepository: InventoryRepository
 
-    private val recyclerView: RecyclerView by bindView(R.id.recyclerView)
+    private val recyclerView: androidx.recyclerview.widget.RecyclerView by bindView(R.id.recyclerView)
 
     var adapter: PetDetailRecyclerAdapter = PetDetailRecyclerAdapter(null, true)
     var animalType: String = ""
     var animalGroup: String = ""
-    internal var layoutManager: GridLayoutManager? = null
+    internal var layoutManager: androidx.recyclerview.widget.GridLayoutManager? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         this.usesTabLayout = false
@@ -53,17 +53,22 @@ class PetDetailRecyclerFragment : BaseMainFragment() {
         super.onDestroy()
     }
 
-    override fun injectFragment(component: AppComponent) {
+    override fun injectFragment(component: UserComponent) {
         component.inject(this)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val finalView = view
+
+        arguments?.let {
+            val args = MountDetailRecyclerFragmentArgs.fromBundle(it)
+            animalGroup = args.group
+            animalType = args.type
+        }
 
         resetViews()
 
-        layoutManager = GridLayoutManager(getActivity(), 2)
+        layoutManager = androidx.recyclerview.widget.GridLayoutManager(getActivity(), 2)
         recyclerView.layoutManager = layoutManager
         recyclerView.addItemDecoration(MarginDecoration(getActivity()))
 
@@ -77,7 +82,7 @@ class PetDetailRecyclerFragment : BaseMainFragment() {
                 .flatMap<Items> { key -> inventoryRepository.equip(user, "pet", key) }
                 .subscribe(Consumer { }, RxErrorHandler.handleEmptyError()))
 
-        finalView.post { setGridSpanCount(finalView.width) }
+        view.post { setGridSpanCount(view.width) }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -101,8 +106,22 @@ class PetDetailRecyclerFragment : BaseMainFragment() {
 
     private fun loadItems() {
         if (animalType.isNotEmpty() && animalGroup.isNotEmpty()) {
-            inventoryRepository.getPets(animalType, animalGroup).firstElement().subscribe(Consumer<RealmResults<Pet>> { adapter.updateData(it) }, RxErrorHandler.handleEmptyError())
-            inventoryRepository.getOwnedMounts(animalType, animalGroup).subscribe(Consumer<RealmResults<Mount>> { adapter.setOwnedMounts(it) }, RxErrorHandler.handleEmptyError())
+            compositeSubscription.add(inventoryRepository.getOwnedPets()
+                    .map { ownedMounts ->
+                        val mountMap = mutableMapOf<String, OwnedPet>()
+                        ownedMounts.forEach { mountMap[it.key ?: ""] = it }
+                        return@map mountMap
+                    }
+                    .subscribe(Consumer { adapter.setOwnedPets(it) }, RxErrorHandler.handleEmptyError()))
+            compositeSubscription.add(inventoryRepository.getOwnedMounts()
+                    .map { ownedMounts ->
+                        val mountMap = mutableMapOf<String, OwnedMount>()
+                        ownedMounts.forEach { mountMap[it.key ?: ""] = it }
+                        return@map mountMap
+                    }
+                    .subscribe(Consumer { adapter.setOwnedMounts(it) }, RxErrorHandler.handleEmptyError()))
+            compositeSubscription.add(inventoryRepository.getPets(animalType, animalGroup).firstElement().subscribe(Consumer<RealmResults<Pet>> { adapter.updateData(it) }, RxErrorHandler.handleEmptyError()))
+            compositeSubscription.add(inventoryRepository.getMounts(animalType, animalGroup).subscribe(Consumer<RealmResults<Mount>> { adapter.setExistingMounts(it) }, RxErrorHandler.handleEmptyError()))
         }
     }
 
@@ -115,14 +134,8 @@ class PetDetailRecyclerFragment : BaseMainFragment() {
             fragment.isHatching = false
             fragment.itemType = "food"
             fragment.itemTypeText = getString(R.string.food)
-            fragment.show(fragmentManager, "feedDialog")
+            fragmentManager?.let { fragment.show(it, "feedDialog") }
         }
-    }
-
-    override fun customTitle(): String {
-        return if (!isAdded) {
-            ""
-        } else getString(R.string.pets)
     }
 
     companion object {

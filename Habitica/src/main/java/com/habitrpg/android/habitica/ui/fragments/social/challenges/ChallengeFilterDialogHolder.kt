@@ -2,8 +2,8 @@ package com.habitrpg.android.habitica.ui.fragments.social.challenges
 
 import android.app.Activity
 import android.app.AlertDialog
-import android.support.v7.widget.LinearLayoutManager
-import android.support.v7.widget.RecyclerView
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import android.view.View
 import android.widget.Button
 import android.widget.CheckBox

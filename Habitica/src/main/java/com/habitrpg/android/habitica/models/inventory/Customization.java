@@ -1,6 +1,6 @@
 package com.habitrpg.android.habitica.models.inventory;
 
-import android.support.annotation.Nullable;
+import androidx.annotation.Nullable;
 
 import java.util.Date;
 
@@ -28,6 +28,7 @@ public class Customization extends RealmObject {
         this.id = id;
     }
 
+    @Nullable
     public String getIdentifier() {
         return this.identifier;
     }
@@ -37,6 +38,7 @@ public class Customization extends RealmObject {
         this.updateID();
     }
 
+    @Nullable
     public String getCategory() {
         return this.category;
     }
@@ -46,6 +48,7 @@ public class Customization extends RealmObject {
         this.updateID();
     }
 
+    @Nullable
     public String getType() {
         return this.type;
     }

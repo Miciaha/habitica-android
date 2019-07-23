@@ -1,24 +1,29 @@
 package com.habitrpg.android.habitica.ui.adapter.inventory
 
-import android.support.v7.widget.RecyclerView
+import android.content.Context
+import android.graphics.drawable.BitmapDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import com.facebook.drawee.view.SimpleDraweeView
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.extensions.notNull
-import com.habitrpg.android.habitica.ui.helpers.bindView
+import com.habitrpg.android.habitica.helpers.MainNavigationController
+import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.models.inventory.Animal
 import com.habitrpg.android.habitica.ui.activities.MainActivity
-import com.habitrpg.android.habitica.ui.fragments.inventory.stable.MountDetailRecyclerFragment
-import com.habitrpg.android.habitica.ui.fragments.inventory.stable.PetDetailRecyclerFragment
+import com.habitrpg.android.habitica.ui.fragments.inventory.stable.StableFragmentDirections
 import com.habitrpg.android.habitica.ui.helpers.DataBindingUtils
+import com.habitrpg.android.habitica.ui.helpers.bindView
 import com.habitrpg.android.habitica.ui.viewHolders.SectionViewHolder
+import io.reactivex.Observable
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.functions.Consumer
 
-class StableRecyclerAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class StableRecyclerAdapter : androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
 
     var itemType: String? = null
+    var context: Context? = null
     var activity: MainActivity? = null
     private var itemList: List<Any> = ArrayList()
 
@@ -27,7 +32,7 @@ class StableRecyclerAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         this.notifyDataSetChanged()
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): androidx.recyclerview.widget.RecyclerView.ViewHolder =
             when (viewType) {
                 0 -> {
                     val view = LayoutInflater.from(parent.context).inflate(R.layout.customization_section_header, parent, false)
@@ -39,12 +44,12 @@ class StableRecyclerAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 }
             }
 
-    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: androidx.recyclerview.widget.RecyclerView.ViewHolder, position: Int) {
         val obj = this.itemList[position]
         if (obj.javaClass == String::class.java) {
             (holder as? SectionViewHolder)?.bind(obj as? String ?: "")
         } else {
-            (obj as? Animal).notNull { (holder as? StableViewHolder)?.bind(it) }
+            (obj as? Animal)?.let { (holder as? StableViewHolder)?.bind(it) }
 
         }
     }
@@ -59,7 +64,7 @@ class StableRecyclerAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     override fun getItemCount(): Int = itemList.size
 
-    internal inner class StableViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView), View.OnClickListener {
+    internal inner class StableViewHolder(itemView: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(itemView), View.OnClickListener {
         private var animal: Animal? = null
 
         private val imageView: SimpleDraweeView by bindView(itemView, R.id.imageView)
@@ -72,20 +77,27 @@ class StableRecyclerAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
         fun bind(item: Animal) {
             this.animal = item
-            titleView.text = item.animalText
+            titleView.text = item.animal
             ownedTextView.visibility = View.VISIBLE
             this.imageView.alpha = 1.0f
-            if (item.numberOwned > 0) {
-                this.ownedTextView.text = animal?.numberOwned?.toString()
-                if (itemType == "pets") {
-                    DataBindingUtils.loadImage(this.imageView, "Pet-" + item.key)
-                } else {
-                    DataBindingUtils.loadImage(this.imageView, "Mount_Icon_" + item.key)
-                }
+            val imageName = if (itemType == "pets") {
+                "Pet-" + item.key
             } else {
-                ownedTextView.visibility = View.GONE
-                DataBindingUtils.loadImage(this.imageView, "PixelPaw")
-                this.imageView.alpha = 0.4f
+                "Mount_Icon_" + item.key
+            }
+            this.ownedTextView.text = animal?.numberOwned?.toString()
+            ownedTextView.visibility = if (animal?.numberOwned == 0 || animal?.type == "special") View.GONE else View.VISIBLE
+            imageView.background = null
+            DataBindingUtils.loadImage(imageName) {
+                val drawable = BitmapDrawable(context?.resources, if (item.numberOwned > 0) it else it.extractAlpha())
+                Observable.just(drawable)
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe(Consumer {
+                            imageView.background = drawable
+                        }, RxErrorHandler.handleEmptyError())
+            }
+            if (item.numberOwned <= 0) {
+                this.imageView.alpha = 0.1f
             }
         }
 
@@ -94,15 +106,9 @@ class StableRecyclerAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             if (animal != null) {
                 if (animal.numberOwned > 0) {
                     if (itemType == "pets") {
-                        val fragment = PetDetailRecyclerFragment()
-                        fragment.animalType = animal.animal
-                        fragment.animalGroup = animal.animalGroup
-                        activity?.displayFragment(fragment)
+                        MainNavigationController.navigate(StableFragmentDirections.openPetDetail(animal.animal, animal.type))
                     } else {
-                        val fragment = MountDetailRecyclerFragment()
-                        fragment.animalType = animal.animal
-                        fragment.animalGroup = animal.animalGroup
-                        activity?.displayFragment(fragment)
+                        MainNavigationController.navigate(StableFragmentDirections.openMountDetail(animal.animal, animal.type))
                     }
                 }
             }

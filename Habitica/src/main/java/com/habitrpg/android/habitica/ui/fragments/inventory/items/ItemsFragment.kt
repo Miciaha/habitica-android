@@ -1,26 +1,20 @@
 package com.habitrpg.android.habitica.ui.fragments.inventory.items
 
 import android.os.Bundle
-import android.support.design.widget.TabLayout
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentPagerAdapter
-import android.support.v4.view.ViewPager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-
+import androidx.fragment.app.FragmentPagerAdapter
+import com.google.android.material.tabs.TabLayout
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
-import com.habitrpg.android.habitica.events.commands.HatchingCommand
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.ui.fragments.BaseMainFragment
 import com.habitrpg.android.habitica.ui.helpers.bindView
 import com.habitrpg.android.habitica.ui.helpers.resetViews
 
-import org.greenrobot.eventbus.Subscribe
-
 class ItemsFragment : BaseMainFragment() {
 
-    private val viewPager: ViewPager? by bindView(R.id.viewPager)
+    private val viewPager: androidx.viewpager.widget.ViewPager? by bindView(R.id.viewPager)
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
@@ -36,9 +30,20 @@ class ItemsFragment : BaseMainFragment() {
 
         viewPager?.currentItem = 0
         setViewPagerAdapter()
+
+        arguments?.let {
+            val args = ItemsFragmentArgs.fromBundle(it)
+                viewPager?.currentItem = when (args.itemType) {
+                    "hatchingPotions" -> 1
+                    "food" -> 2
+                    "quests" -> 3
+                    "special" -> 4
+                    else -> 0
+                }
+        }
     }
 
-    override fun injectFragment(component: AppComponent) {
+    override fun injectFragment(component: UserComponent) {
         component.inject(this)
     }
 
@@ -47,7 +52,7 @@ class ItemsFragment : BaseMainFragment() {
 
         viewPager?.adapter = object : FragmentPagerAdapter(fragmentManager) {
 
-            override fun getItem(position: Int): Fragment {
+            override fun getItem(position: Int): androidx.fragment.app.Fragment {
 
                 val fragment = ItemRecyclerFragment()
 
@@ -93,29 +98,5 @@ class ItemsFragment : BaseMainFragment() {
         }
         tabLayout?.setupWithViewPager(viewPager)
         tabLayout?.tabMode = TabLayout.MODE_SCROLLABLE
-    }
-
-    @Subscribe
-    fun showHatchingDialog(event: HatchingCommand) {
-        if (event.usingEgg == null || event.usingHatchingPotion == null) {
-            val fragment = ItemRecyclerFragment()
-            if (event.usingEgg != null) {
-                fragment.itemType = "hatchingPotions"
-                fragment.hatchingItem = event.usingEgg
-            } else {
-                fragment.itemType = "eggs"
-                fragment.hatchingItem = event.usingHatchingPotion
-            }
-            fragment.isHatching = true
-            fragment.isFeeding = false
-            fragment.show(fragmentManager!!, "hatchingDialog")
-        }
-    }
-
-
-    override fun customTitle(): String {
-        return if (!isAdded) {
-            ""
-        } else getString(R.string.sidebar_items)
     }
 }

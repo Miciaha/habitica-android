@@ -3,9 +3,9 @@ package com.habitrpg.android.habitica.interactors
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
-import android.support.v4.content.ContextCompat
-import android.support.v4.util.Pair
-import android.support.v7.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.util.Pair
+import androidx.appcompat.app.AppCompatActivity
 import android.text.SpannableStringBuilder
 import android.view.Gravity
 import android.view.View
@@ -39,7 +39,7 @@ constructor(threadExecutor: ThreadExecutor, postExecutionThread: PostExecutionTh
             if (requestValues.hasLeveledUp == true) {
                 return@defer levelUpUseCase.observable(LevelUpUseCase.RequestValues(requestValues.user, requestValues.context))
                         .flatMap<User> { userRepository.retrieveUser(true) }
-                        .map({ it.stats })
+                        .map { it.stats }
             } else {
                 val pair = getNotificationAndAddStatsToUser(requestValues.context, requestValues.xp, requestValues.hp, requestValues.gold, requestValues.mp, requestValues.questDamage, requestValues.user)
                 val view = pair.first

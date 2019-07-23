@@ -1,42 +1,37 @@
 package com.habitrpg.android.habitica.ui.activities
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.Typeface
 import android.os.Bundle
-import android.support.v4.content.ContextCompat
-import android.support.v7.app.AlertDialog
-import android.support.v7.widget.AppCompatImageView
-import android.support.v7.widget.CardView
-import android.support.v7.widget.GridLayoutManager
-import android.support.v7.widget.RecyclerView
 import android.view.*
 import android.widget.*
+import androidx.appcompat.widget.AppCompatImageView
+import androidx.core.content.ContextCompat
 import com.facebook.drawee.backends.pipeline.Fresco
 import com.facebook.drawee.controller.BaseControllerListener
 import com.facebook.drawee.view.SimpleDraweeView
 import com.facebook.imagepipeline.image.ImageInfo
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.ApiClient
 import com.habitrpg.android.habitica.data.InventoryRepository
 import com.habitrpg.android.habitica.data.SocialRepository
-import com.habitrpg.android.habitica.extensions.notNull
+import com.habitrpg.android.habitica.helpers.MainNavigationController
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.helpers.UserStatComputer
-import com.habitrpg.android.habitica.models.AchievementGroup
-import com.habitrpg.android.habitica.models.AchievementResult
+import com.habitrpg.android.habitica.models.Achievement
 import com.habitrpg.android.habitica.models.inventory.Equipment
 import com.habitrpg.android.habitica.models.members.Member
 import com.habitrpg.android.habitica.models.user.Outfit
 import com.habitrpg.android.habitica.models.user.Stats
 import com.habitrpg.android.habitica.ui.AvatarView
 import com.habitrpg.android.habitica.ui.AvatarWithBarsViewModel
-import com.habitrpg.android.habitica.ui.adapter.social.AchievementAdapter
+import com.habitrpg.android.habitica.ui.adapter.social.AchievementProfileAdapter
 import com.habitrpg.android.habitica.ui.helpers.DataBindingUtils
-import com.habitrpg.android.habitica.ui.helpers.KeyboardUtil
 import com.habitrpg.android.habitica.ui.helpers.MarkdownParser
 import com.habitrpg.android.habitica.ui.helpers.bindView
+import com.habitrpg.android.habitica.ui.helpers.dismissKeyboard
+import com.habitrpg.android.habitica.ui.views.dialogs.HabiticaAlertDialog
 import com.habitrpg.android.habitica.ui.views.HabiticaSnackbar
 import com.habitrpg.android.habitica.ui.views.HabiticaSnackbar.SnackbarDisplayType
 import io.reactivex.Flowable
@@ -60,26 +55,26 @@ class FullProfileActivity : BaseActivity() {
     private val avatarView: AvatarView by bindView(R.id.avatarView)
     private val copyUsernameButton: Button by bindView(R.id.copy_username)
     private val usernameText: TextView by bindView(R.id.username)
-    private val attributesCardView: CardView by bindView(R.id.profile_attributes_card)
+    private val attributesCardView: androidx.cardview.widget.CardView by bindView(R.id.profile_attributes_card)
     private val attributesTableLayout: TableLayout by bindView(R.id.attributes_table)
     private val attributesCollapseIcon: AppCompatImageView by bindView(R.id.attributes_collapse_icon)
     private val equipmentTableLayout: TableLayout by bindView(R.id.equipment_table)
     private val costumeTableLayout: TableLayout by bindView(R.id.costume_table)
-    private val costumeCard: CardView by bindView(R.id.profile_costume_card)
-    private val avatar_with_bars: View by bindView(R.id.avatar_with_bars)
-    private val fullprofile_scrollview: ScrollView by bindView(R.id.fullprofile_scrollview)
+    private val costumeCard: androidx.cardview.widget.CardView by bindView(R.id.profile_costume_card)
+    private val avatarWithStatsView: View by bindView(R.id.avatar_with_bars)
+    private val scrollView: ScrollView by bindView(R.id.fullprofile_scrollview)
     private val petsFoundCount: TextView by bindView(R.id.profile_pets_found_count)
     private val mountsTamedCount: TextView by bindView(R.id.profile_mounts_tamed_count)
     private val currentPetDrawee: SimpleDraweeView by bindView(R.id.current_pet_drawee)
     private val currentMountDrawee: SimpleDraweeView by bindView(R.id.current_mount_drawee)
-    private val achievementCard: CardView by bindView(R.id.profile_achievements_card)
+    private val achievementCard: androidx.cardview.widget.CardView by bindView(R.id.profile_achievements_card)
     private val achievementProgress: ProgressBar by bindView(R.id.avatar_achievements_progress)
-    private val achievementGroupList: RecyclerView by bindView(R.id.recyclerView)
+    private val achievementGroupList: androidx.recyclerview.widget.RecyclerView by bindView(R.id.recyclerView)
     private val joinedView: TextView by bindView(R.id.joined_view)
     private val lastLoginView: TextView by bindView(R.id.last_login_view)
     private val totalCheckinsView: TextView by bindView(R.id.total_checkins_view)
 
-    private var userId = ""
+    private var userID = ""
     private var userName: String? = null
     private var avatarWithBars: AvatarWithBarsViewModel? = null
     private var attributeStrSum = 0f
@@ -93,22 +88,23 @@ class FullProfileActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val intent = intent
-        val bundle = intent.extras
-        this.userId = bundle?.getString("userId") ?: ""
+        userID = intent?.extras?.getString("userID", "") ?: ""
+        if (userID.isEmpty()) {
+            userID = intent?.data?.path?.removePrefix("/profile/") ?: ""
+        }
 
         setTitle(R.string.profile_loading_data)
 
-        compositeSubscription.add(socialRepository.getMember(this.userId).subscribe(Consumer { this.updateView(it) }, RxErrorHandler.handleEmptyError()))
+        compositeSubscription.add(socialRepository.getMember(this.userID).subscribe(Consumer { this.updateView(it) }, RxErrorHandler.handleEmptyError()))
 
         avatarWithBars?.valueBarLabelsToBlack()
 
-        avatar_with_bars.setBackgroundColor(ContextCompat.getColor(this, R.color.transparent))
+        avatarWithStatsView.setBackgroundColor(ContextCompat.getColor(this, R.color.transparent))
 
         attributeRows.clear()
         attributesCardView.setOnClickListener { toggleAttributeDetails() }
 
-        avatarWithBars = AvatarWithBarsViewModel(this, avatar_with_bars)
+        avatarWithBars = AvatarWithBarsViewModel(this, avatarWithStatsView)
     }
 
     override fun onDestroy() {
@@ -119,18 +115,18 @@ class FullProfileActivity : BaseActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         val id = item.itemId
 
-        if (id == R.id.private_message) {
-            showSendMessageToUserDialog()
-            return true
+        return when (id) {
+            R.id.private_message -> {
+                showSendMessageToUserDialog()
+                true
+            }
+            android.R.id.home -> {
+                // app icon in action bar clicked; goto parent activity.
+                this.finish()
+                return true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
-
-        if (id == android.R.id.home) {
-            // app icon in action bar clicked; goto parent activity.
-            this.finish()
-            return true
-        }
-
-        return super.onOptionsItemSelected(item)
     }
 
     private fun showSendMessageToUserDialog() {
@@ -142,22 +138,18 @@ class FullProfileActivity : BaseActivity() {
         val newMessageTitle = newMessageView.findViewById<TextView>(R.id.new_message_title)
         newMessageTitle.text = String.format(getString(R.string.profile_send_message_to), userName)
 
-        val addMessageDialog = AlertDialog.Builder(this)
-                .setPositiveButton(android.R.string.ok) { _, _ ->
-                    socialRepository.postPrivateMessage(userId, emojiEditText.text.toString())
+        val addMessageDialog = HabiticaAlertDialog(this)
+        addMessageDialog.addButton(android.R.string.ok, true) { _, _ ->
+                    socialRepository.postPrivateMessage(userID, emojiEditText.text.toString())
                             .subscribe(Consumer {
-                                HabiticaSnackbar.showSnackbar(this@FullProfileActivity.fullprofile_scrollview.getChildAt(0) as ViewGroup,
+                                HabiticaSnackbar.showSnackbar(this@FullProfileActivity.scrollView.getChildAt(0) as ViewGroup,
                                         String.format(getString(R.string.profile_message_sent_to), userName), SnackbarDisplayType.NORMAL)
                             }, RxErrorHandler.handleEmptyError())
 
-                    KeyboardUtil.dismissKeyboard(this)
+                    dismissKeyboard()
                 }
-                .setNegativeButton(android.R.string.cancel) { _, _ -> KeyboardUtil.dismissKeyboard(this) }
-
-                .create()
-
-        addMessageDialog.setView(newMessageView)
-
+        addMessageDialog.addButton(android.R.string.cancel, false) { _, _ -> dismissKeyboard() }
+        addMessageDialog.setAdditionalContentView(newMessageView)
         addMessageDialog.show()
     }
 
@@ -188,8 +180,8 @@ class FullProfileActivity : BaseActivity() {
             blurbTextView.text = MarkdownParser.parseMarkdown(blurbText)
         }
 
-        user.authentication?.timestamps?.createdAt.notNull { joinedView.text = dateFormatter.format(it) }
-        user.authentication?.timestamps?.lastLoggedIn.notNull { lastLoginView.text = dateFormatter.format(it) }
+        user.authentication?.timestamps?.createdAt?.let { joinedView.text = dateFormatter.format(it) }
+        user.authentication?.timestamps?.lastLoggedIn?.let { lastLoginView.text = dateFormatter.format(it) }
         totalCheckinsView.text = user.loginIncentives.toString()
 
         usernameText.text = user.username
@@ -214,7 +206,7 @@ class FullProfileActivity : BaseActivity() {
 
 
         // Load the members achievements now
-        compositeSubscription.add(socialRepository.getMemberAchievements(this.userId).subscribe(Consumer<AchievementResult> { this.fillAchievements(it) }, RxErrorHandler.handleEmptyError()))
+        compositeSubscription.add(socialRepository.getMemberAchievements(this.userID).subscribe(Consumer { this.fillAchievements(it) }, RxErrorHandler.handleEmptyError()))
     }
 
     private fun updatePetsMountsView(user: Member) {
@@ -229,21 +221,21 @@ class FullProfileActivity : BaseActivity() {
 
     // region Attributes
 
-    private fun fillAchievements(achievements: AchievementResult?) {
+    private fun fillAchievements(achievements: List<Achievement>?) {
         if (achievements == null) {
             return
         }
         val items = ArrayList<Any>()
 
-        fillAchievements(achievements.basic, items)
-        fillAchievements(achievements.seasonal, items)
-        fillAchievements(achievements.special, items)
+        fillAchievements(R.string.basic_achievements, achievements.filter { it.category == "basic" }, items)
+        fillAchievements(R.string.seasonal_achievements, achievements.filter { it.category == "seasonal" }, items)
+        fillAchievements(R.string.special_achievements, achievements.filter { it.category == "special" }, items)
 
-        val adapter = AchievementAdapter()
+        val adapter = AchievementProfileAdapter()
         adapter.setItemList(items)
 
-        val layoutManager = GridLayoutManager(this, 3)
-        layoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+        val layoutManager = androidx.recyclerview.widget.GridLayoutManager(this, 3)
+        layoutManager.spanSizeLookup = object : androidx.recyclerview.widget.GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
                 return if (adapter.getItemViewType(position) == 0) {
                     layoutManager.spanCount
@@ -258,12 +250,12 @@ class FullProfileActivity : BaseActivity() {
         stopAndHideProgress(achievementProgress)
     }
 
-    private fun fillAchievements(achievementGroup: AchievementGroup, targetList: MutableList<Any>) {
+    private fun fillAchievements(labelID: Int, achievements: List<Achievement>, targetList: MutableList<Any>) {
         // Order by ID first
-        val achievementList = ArrayList(achievementGroup.achievements.values)
+        val achievementList = ArrayList(achievements)
         achievementList.sortWith(Comparator { achievement, t1 -> java.lang.Double.compare(achievement.index.toDouble(), t1.index.toDouble()) })
 
-        targetList.add(achievementGroup.label)
+        targetList.add(getString(labelID))
         targetList.addAll(achievementList)
     }
 
@@ -339,7 +331,7 @@ class FullProfileActivity : BaseActivity() {
             outfitList.add(outfit.shield)
             outfitList.add(outfit.weapon)
         }
-        return inventoryRepository.getItems(outfitList)
+        return inventoryRepository.getEquipment(outfitList)
     }
 
     private fun gotGear(equipmentList: List<Equipment>, user: Member) {
@@ -354,16 +346,14 @@ class FullProfileActivity : BaseActivity() {
         addLevelAttributes(user)
 
         for (row in statsRows) {
-            if (row.javaClass == UserStatComputer.EquipmentRow::class.java) {
-                val equipmentRow = row as UserStatComputer.EquipmentRow
-                addEquipmentRow(equipmentTableLayout, equipmentRow.gearKey, equipmentRow.text, equipmentRow.stats)
-            } else if (row.javaClass == UserStatComputer.AttributeRow::class.java) {
-                val attributeRow2 = row as UserStatComputer.AttributeRow
-                addAttributeRow(getString(attributeRow2.labelId), attributeRow2.strVal, attributeRow2.intVal, attributeRow2.conVal, attributeRow2.perVal, attributeRow2.roundDown, attributeRow2.isSummary)
+            if (row is UserStatComputer.EquipmentRow) {
+                addEquipmentRow(equipmentTableLayout, row.gearKey, row.text, row.stats)
+            } else if (row is UserStatComputer.AttributeRow) {
+                addAttributeRow(getString(row.labelId), row.strVal, row.intVal, row.conVal, row.perVal, row.roundDown, row.isSummary)
             }
         }
 
-        user.stats.notNull { addNormalAddBuffAttributes(it) }
+        user.stats?.let { addNormalAddBuffAttributes(it) }
     }
 
     private fun gotCostume(obj: List<Equipment>) {
@@ -377,42 +367,41 @@ class FullProfileActivity : BaseActivity() {
     private fun addNormalAddBuffAttributes(stats: Stats) {
         val buffs = stats.buffs
 
-        addAttributeRow(getString(R.string.profile_allocated), stats.str?.toFloat() ?: 0f, stats._int?.toFloat() ?: 0f, stats.con?.toFloat() ?: 0f, stats.per?.toFloat() ?: 0f, true, false)
-        addAttributeRow(getString(R.string.profile_boosts), buffs?.getStr() ?: 0f, buffs?.get_int() ?: 0f, buffs?.getCon() ?: 0f, buffs?.getPer() ?: 0f, true, false)
+        addAttributeRow(getString(R.string.profile_allocated), stats.strength?.toFloat() ?: 0f, stats.intelligence?.toFloat() ?: 0f, stats.constitution?.toFloat() ?: 0f, stats.per?.toFloat() ?: 0f, true, false)
+        addAttributeRow(getString(R.string.buffs), buffs?.getStr() ?: 0f, buffs?.get_int() ?: 0f, buffs?.getCon() ?: 0f, buffs?.getPer() ?: 0f, true, false)
 
         // Summary row
         addAttributeRow("", attributeStrSum, attributeIntSum, attributeConSum, attributePerSum, false, true)
     }
 
     private fun addAttributeRow(label: String, strVal: Float, intVal: Float, conVal: Float, perVal: Float, roundDown: Boolean, isSummary: Boolean) {
-        val tableRow = layoutInflater.inflate(R.layout.profile_attributetablerow, attributesTableLayout, false) as TableRow
+        val tableRow = layoutInflater.inflate(R.layout.profile_attributetablerow, attributesTableLayout, false) as? TableRow ?: return
         val keyTextView = tableRow.findViewById<TextView>(R.id.tv_attribute_type)
-        keyTextView.text = label
+        keyTextView?.text = label
 
         val strTextView = tableRow.findViewById<TextView>(R.id.tv_attribute_str)
-        strTextView.text = getFloorValueString(strVal, roundDown)
+        strTextView?.text = getFloorValueString(strVal, roundDown)
 
         val intTextView = tableRow.findViewById<TextView>(R.id.tv_attribute_int)
-        intTextView.text = getFloorValueString(intVal, roundDown)
+        intTextView?.text = getFloorValueString(intVal, roundDown)
 
         val conTextView = tableRow.findViewById<TextView>(R.id.tv_attribute_con)
-        conTextView.text = getFloorValueString(conVal, roundDown)
+        conTextView?.text = getFloorValueString(conVal, roundDown)
 
         val perTextView = tableRow.findViewById<TextView>(R.id.tv_attribute_per)
-        perTextView.text = getFloorValueString(perVal, roundDown)
+        perTextView?.text = getFloorValueString(perVal, roundDown)
 
 
         if (isSummary) {
-            strTextView.setTypeface(null, Typeface.BOLD)
-            intTextView.setTypeface(null, Typeface.BOLD)
-            conTextView.setTypeface(null, Typeface.BOLD)
-            perTextView.setTypeface(null, Typeface.BOLD)
+            strTextView?.setTypeface(null, Typeface.BOLD)
+            intTextView?.setTypeface(null, Typeface.BOLD)
+            conTextView?.setTypeface(null, Typeface.BOLD)
+            perTextView?.setTypeface(null, Typeface.BOLD)
         } else {
             attributeStrSum += getFloorValue(strVal, roundDown)
             attributeIntSum += getFloorValue(intVal, roundDown)
             attributeConSum += getFloorValue(conVal, roundDown)
             attributePerSum += getFloorValue(perVal, roundDown)
-
             attributeRows.add(tableRow)
             tableRow.visibility = if (attributeDetailsHidden) View.GONE else View.VISIBLE
         }
@@ -456,7 +445,7 @@ class FullProfileActivity : BaseActivity() {
         return R.layout.activity_full_profile
     }
 
-    override fun injectActivity(component: AppComponent?) {
+    override fun injectActivity(component: UserComponent?) {
         component?.inject(this)
     }
 
@@ -468,17 +457,13 @@ class FullProfileActivity : BaseActivity() {
 
     companion object {
 
-        fun open(context: Context, userId: String) {
+        fun open(userId: String) {
             if (userId == "system") {
                 return
             }
             val bundle = Bundle()
-            bundle.putString("userId", userId)
-
-            val intent = Intent(context, FullProfileActivity::class.java)
-            intent.putExtras(bundle)
-            intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-            context.startActivity(intent)
+            bundle.putString("userID", userId)
+            MainNavigationController.navigate(R.id.fullProfileActivity, bundle)
         }
     }
 

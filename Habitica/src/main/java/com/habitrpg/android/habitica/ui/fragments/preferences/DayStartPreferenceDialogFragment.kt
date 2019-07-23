@@ -4,8 +4,8 @@ package com.habitrpg.android.habitica.ui.fragments.preferences
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
-import android.support.v7.preference.PreferenceDialogFragmentCompat
-import android.support.v7.preference.PreferenceFragmentCompat
+import androidx.preference.PreferenceDialogFragmentCompat
+import androidx.preference.PreferenceFragmentCompat
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -102,7 +102,7 @@ class DayStartPreferenceDialogFragment : PreferenceDialogFragmentCompat() {
                 preferenceFragment: PreferenceFragmentCompat, key: String): DayStartPreferenceDialogFragment {
             val fragment = DayStartPreferenceDialogFragment()
             val arguments = Bundle(1)
-            arguments.putString(PreferenceDialogFragmentCompat.ARG_KEY, key)
+            arguments.putString(ARG_KEY, key)
             fragment.arguments = arguments
             fragment.setTargetFragment(preferenceFragment, 0)
             return fragment

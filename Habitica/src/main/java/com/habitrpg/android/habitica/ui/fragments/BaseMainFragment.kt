@@ -2,23 +2,19 @@ package com.habitrpg.android.habitica.ui.fragments
 
 import android.content.Context
 import android.os.Bundle
-import android.support.design.widget.AppBarLayout
-import android.support.design.widget.CollapsingToolbarLayout
-import android.support.design.widget.TabLayout
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
-
+import com.google.android.material.appbar.AppBarLayout
+import com.google.android.material.tabs.TabLayout
 import com.habitrpg.android.habitica.data.ApiClient
 import com.habitrpg.android.habitica.data.UserRepository
+import com.habitrpg.android.habitica.extensions.setScaledPadding
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.helpers.SoundManager
 import com.habitrpg.android.habitica.models.user.User
 import com.habitrpg.android.habitica.ui.activities.MainActivity
-import com.roughike.bottombar.BottomBar
 import io.reactivex.functions.Consumer
-
 import javax.inject.Inject
 
 abstract class BaseMainFragment : BaseFragment() {
@@ -30,26 +26,22 @@ abstract class BaseMainFragment : BaseFragment() {
     @Inject
     lateinit var soundManager: SoundManager
 
-    open var activity: MainActivity? = null
-    var tabLayout: TabLayout? = null
-    var collapsingToolbar: CollapsingToolbarLayout? = null
-    var toolbarAccessoryContainer: FrameLayout? = null
-    var bottomNavigation: BottomBar? = null
-    var floatingMenuWrapper: ViewGroup? = null
+    open val activity get() = getActivity() as? MainActivity
+    val tabLayout get() = activity?.detailTabs
+    val collapsingToolbar get() = activity?.toolbar
+    val toolbarAccessoryContainer get() = activity?.toolbarAccessoryContainer
+    val bottomNavigation get() = activity?.bottomNavigation
+    val floatingMenuWrapper get() = activity?.snackbarContainer
     var usesTabLayout: Boolean = false
+    var hidesToolbar: Boolean = false
     var usesBottomNavigation = false
-    var fragmentSidebarIdentifier: String? = null
     open var user: User? = null
 
-    open fun updateUserData(user: User?) {
-        this.user = user
-    }
-
-    override fun onAttach(context: Context?) {
+    override fun onAttach(context: Context) {
         super.onAttach(context)
 
         if (getActivity()?.javaClass == MainActivity::class.java) {
-            this.activity = getActivity() as? MainActivity
+            user = activity?.user
         }
     }
 
@@ -65,20 +57,26 @@ abstract class BaseMainFragment : BaseFragment() {
         }
 
         if (this.usesBottomNavigation) {
-            bottomNavigation?.removeOnTabSelectListener()
-            bottomNavigation?.removeOnTabReselectListener()
             bottomNavigation?.visibility = View.VISIBLE
+            activity?.snackbarContainer?.setScaledPadding(context, 0, 0, 0, 68)
         } else {
             bottomNavigation?.visibility = View.GONE
+            activity?.snackbarContainer?.setScaledPadding(context, 0, 0, 0, 0)
         }
 
         floatingMenuWrapper?.removeAllViews()
 
         setHasOptionsMenu(true)
 
-        activity?.setActiveFragment(this)
-
         updateTabLayoutVisibility()
+
+        if (hidesToolbar) {
+            hideToolbar()
+            disableToolbarScrolling()
+        } else {
+            showToolbar()
+            enableToolbarScrolling()
+        }
 
         return null
     }
@@ -106,25 +104,21 @@ abstract class BaseMainFragment : BaseFragment() {
         super.onSaveInstanceState(outState)
     }
 
-    open fun customTitle(): String {
-        return ""
-    }
-
-    fun hideToolbar() {
+    private fun hideToolbar() {
         activity?.avatarWithBars?.visibility = View.GONE
     }
 
-    fun showToolbar() {
+    private fun showToolbar() {
         activity?.avatarWithBars?.visibility = View.VISIBLE
     }
 
-    fun disableToolbarScrolling() {
-        val params = collapsingToolbar?.layoutParams as AppBarLayout.LayoutParams?
+    private fun disableToolbarScrolling() {
+        val params = collapsingToolbar?.layoutParams as? AppBarLayout.LayoutParams
         params?.scrollFlags = 0
     }
 
-    fun enableToolbarScrolling() {
-        val params = collapsingToolbar?.layoutParams as AppBarLayout.LayoutParams?
+    private fun enableToolbarScrolling() {
+        val params = collapsingToolbar?.layoutParams as? AppBarLayout.LayoutParams
         params?.scrollFlags = AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or AppBarLayout.LayoutParams.SCROLL_FLAG_EXIT_UNTIL_COLLAPSED
     }
 }

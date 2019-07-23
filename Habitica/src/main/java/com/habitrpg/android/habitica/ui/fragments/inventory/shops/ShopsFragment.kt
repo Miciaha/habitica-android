@@ -1,18 +1,19 @@
 package com.habitrpg.android.habitica.ui.fragments.inventory.shops
 
 import android.os.Bundle
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentPagerAdapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.FragmentPagerAdapter
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.InventoryRepository
+import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.models.shops.Shop
 import com.habitrpg.android.habitica.models.user.User
 import com.habitrpg.android.habitica.ui.fragments.BaseMainFragment
 import com.habitrpg.android.habitica.ui.views.CurrencyViews
+import io.reactivex.functions.Consumer
 import kotlinx.android.synthetic.main.fragment_viewpager.*
 import javax.inject.Inject
 
@@ -27,8 +28,7 @@ class ShopsFragment : BaseMainFragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         this.usesTabLayout = true
-        hideToolbar()
-        disableToolbarScrolling()
+        this.hidesToolbar = true
         super.onCreateView(inflater, container, savedInstanceState)
         return inflater.inflate(R.layout.fragment_viewpager, container, false)
     }
@@ -38,27 +38,30 @@ class ShopsFragment : BaseMainFragment() {
         viewPager.currentItem = 0
         setViewPagerAdapter()
         toolbarAccessoryContainer?.addView(currencyView)
-        updateCurrencyView()
+
+        compositeSubscription.add(userRepository.getUser().subscribe(Consumer { updateCurrencyView(it) }, RxErrorHandler.handleEmptyError()))
     }
 
     override fun onDestroyView() {
         toolbarAccessoryContainer?.removeView(currencyView)
-        showToolbar()
-        enableToolbarScrolling()
-        inventoryRepository.close()
         super.onDestroyView()
     }
 
-    override fun injectFragment(component: AppComponent) {
+    override fun onDestroy() {
+        inventoryRepository.close()
+        super.onDestroy()
+    }
+
+    override fun injectFragment(component: UserComponent) {
         component.inject(this)
     }
 
     private fun setViewPagerAdapter() {
         val fragmentManager = childFragmentManager
 
-        viewPager!!.adapter = object : FragmentPagerAdapter(fragmentManager) {
+        viewPager?.adapter = object : FragmentPagerAdapter(fragmentManager) {
 
-            override fun getItem(position: Int): Fragment {
+            override fun getItem(position: Int): androidx.fragment.app.Fragment {
 
                 val fragment = ShopFragment()
 
@@ -78,10 +81,10 @@ class ShopsFragment : BaseMainFragment() {
 
             override fun getPageTitle(position: Int): CharSequence? {
                 return when (position) {
-                    0 -> return context?.getString(R.string.market)
-                    1 -> return context?.getString(R.string.quests)
-                    2 -> return context?.getString(R.string.seasonalShop)
-                    3 -> return context?.getString(R.string.timeTravelers)
+                    0 -> context?.getString(R.string.market)
+                    1 -> context?.getString(R.string.quests)
+                    2 -> context?.getString(R.string.seasonalShop)
+                    3 -> context?.getString(R.string.timeTravelers)
                     else -> ""
                 }
             }
@@ -92,24 +95,9 @@ class ShopsFragment : BaseMainFragment() {
         }
     }
 
-
-    override fun customTitle(): String {
-        return if (!isAdded) {
-            ""
-        } else getString(R.string.sidebar_shops)
-    }
-
-    override fun updateUserData(user: User?) {
-        super.updateUserData(user)
-        updateCurrencyView()
-    }
-
-    private fun updateCurrencyView() {
-        if (user == null) {
-            return
-        }
-        currencyView.gold = user?.stats?.gp ?: 0.0
-        currencyView.gems = user?.gemCount?.toDouble() ?: 0.0
-        currencyView.hourglasses = user?.hourglassCount?.toDouble() ?: 0.0
+    private fun updateCurrencyView(user: User) {
+        currencyView.gold = user.stats?.gp ?: 0.0
+        currencyView.gems = user.gemCount.toDouble()
+        currencyView.hourglasses = user.hourglassCount?.toDouble() ?: 0.0
     }
 }

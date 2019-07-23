@@ -1,7 +1,7 @@
 package com.habitrpg.android.habitica.ui.viewHolders
 
 import android.content.Context
-import android.support.v7.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
@@ -37,7 +37,7 @@ class SectionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
 
     fun bind(title: String) {
         try {
-            val stringID = context.resources.getIdentifier("section" + title, "string", context.packageName)
+            val stringID = context.resources.getIdentifier("section$title", "string", context.packageName)
             this.label.text = context.getString(stringID)
         } catch (e: Exception) {
             this.label.text = title

@@ -3,17 +3,16 @@ package com.habitrpg.android.habitica.ui.activities
 
 import android.content.Intent
 import android.os.Bundle
-import android.support.design.widget.TabLayout
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentPagerAdapter
-import android.support.v4.view.ViewPager
-import android.support.v7.widget.Toolbar
+import android.util.Log
 import android.view.MenuItem
+import androidx.appcompat.widget.Toolbar
+import androidx.fragment.app.FragmentPagerAdapter
+import com.google.android.material.tabs.TabLayout
 import com.habitrpg.android.habitica.HabiticaBaseApplication
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.components.AppComponent
+import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.UserRepository
-import com.habitrpg.android.habitica.extensions.notNull
+import com.habitrpg.android.habitica.events.ConsumablePurchasedEvent
 import com.habitrpg.android.habitica.helpers.PurchaseTypes
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.models.user.ABTest
@@ -24,6 +23,7 @@ import com.habitrpg.android.habitica.ui.helpers.bindView
 import com.playseeds.android.sdk.Seeds
 import com.playseeds.android.sdk.inappmessaging.InAppMessageListener
 import io.reactivex.functions.Consumer
+import org.greenrobot.eventbus.Subscribe
 import org.solovyev.android.checkout.*
 import java.util.*
 import javax.inject.Inject
@@ -36,9 +36,10 @@ class GemPurchaseActivity : BaseActivity(), InAppMessageListener {
     lateinit var userRepository: UserRepository
 
     internal val tabLayout: TabLayout by bindView(R.id.tab_layout)
-    internal val viewPager: ViewPager by bindView(R.id.viewPager)
+    internal val viewPager: androidx.viewpager.widget.ViewPager by bindView(R.id.viewPager)
 
     internal var fragments: MutableList<CheckoutFragment> = ArrayList()
+    var isActive = false
     var activityCheckout: ActivityCheckout? = null
         private set
     private var billingRequests: BillingRequests? = null
@@ -47,7 +48,7 @@ class GemPurchaseActivity : BaseActivity(), InAppMessageListener {
         return R.layout.activity_gem_purchase
     }
 
-    override fun injectActivity(component: AppComponent?) {
+    override fun injectActivity(component: UserComponent?) {
         component?.inject(this)
     }
 
@@ -56,12 +57,10 @@ class GemPurchaseActivity : BaseActivity(), InAppMessageListener {
         activityCheckout?.onActivityResult(requestCode, resultCode, data)
     }
 
-    private var showSubscriptionPageFirst = false
+    private var showSubscriptionPageFirst = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        setupCheckout()
 
         Seeds.sharedInstance()
                 .simpleInit(this, this, "https://dash.playseeds.com", getString(R.string.seeds_app_key)).isLoggingEnabled = true
@@ -79,28 +78,38 @@ class GemPurchaseActivity : BaseActivity(), InAppMessageListener {
 
         setViewPagerAdapter()
 
+        compositeSubscription.add(userRepository.getUser().subscribe(Consumer { user ->
+            for (test in user.abTests ?: emptyList<ABTest>()) {
+                if (test.name == "subscriptionPageOrder") {
+                    if (test.group == "subscriptionFirst") {
+                        showSubscriptionPageFirst = true
+                        viewPager.adapter?.notifyDataSetChanged()
+                        return@Consumer
+                    }
+                }
+            }
+            showSubscriptionPageFirst = false
+            viewPager.adapter?.notifyDataSetChanged()
+        }, RxErrorHandler.handleEmptyError()))
+    }
+
+    override fun onStart() {
+        super.onStart()
+        setupCheckout()
+
         activityCheckout?.destroyPurchaseFlow()
 
         activityCheckout?.createPurchaseFlow(object : RequestListener<Purchase> {
             override fun onSuccess(purchase: Purchase) {
-                if (PurchaseTypes.allGemTypes.contains(purchase.sku)) {
-                    billingRequests?.consume(purchase.token, object : RequestListener<Any> {
-                        override fun onSuccess(o: Any) {
-                            //EventBus.getDefault().post(new BoughtGemsEvent(GEMS_TO_ADD));
-                            if (purchase.sku == PurchaseTypes.Purchase84Gems) {
-                                this@GemPurchaseActivity.showSeedsPromo(getString(R.string.seeds_interstitial_sharing), "store")
-                            }
-                        }
 
-                        override fun onError(i: Int, e: Exception) {
-                            crashlyticsProxy.fabricLogE("Purchase", "Consume", e)
-                        }
-                    })
-                }
             }
 
             override fun onError(i: Int, e: Exception) {
-                crashlyticsProxy.fabricLogE("Purchase", "Error", e)
+                crashlyticsProxy.fabricLogE("PurchaseFlowException", "Error", e)
+                val billingError = e as? BillingException
+                if (billingError != null) {
+                    Log.e("BILLING ERROR", billingError.toString())
+                }
             }
         })
 
@@ -118,25 +127,21 @@ class GemPurchaseActivity : BaseActivity(), InAppMessageListener {
 
             override fun onReady(billingRequests: BillingRequests, s: String, b: Boolean) {}
         })
-
-        compositeSubscription.add(userRepository.getUser().subscribe(Consumer { user ->
-            for (test in user.abTests ?: emptyList<ABTest>()) {
-                if (test.name == "subscriptionPageOrder") {
-                    if (test.group == "subscriptionFirst") {
-                        showSubscriptionPageFirst = true
-                        viewPager.adapter?.notifyDataSetChanged()
-                        return@Consumer
-                    }
-                }
-            }
-            showSubscriptionPageFirst = false
-            viewPager.adapter?.notifyDataSetChanged()
-        }, RxErrorHandler.handleEmptyError()))
     }
 
-    public override fun onDestroy() {
+    override fun onResume() {
+        super.onResume()
+        isActive = true
+    }
+
+    override fun onPause() {
+        super.onPause()
+        isActive = false
+    }
+
+    public override fun onStop() {
         activityCheckout?.stop()
-        super.onDestroy()
+        super.onStop()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -148,7 +153,7 @@ class GemPurchaseActivity : BaseActivity(), InAppMessageListener {
     }
 
     private fun setupCheckout() {
-        HabiticaBaseApplication.getInstance(this).billing.notNull {
+        HabiticaBaseApplication.getInstance(this)?.billing?.let {
             activityCheckout = Checkout.forActivity(this, it)
             activityCheckout?.start()
         }
@@ -158,7 +163,7 @@ class GemPurchaseActivity : BaseActivity(), InAppMessageListener {
     override fun inAppMessageClicked(messageId: String) {
         for (fragment in fragments) {
             if (fragment.javaClass.isAssignableFrom(GemsPurchaseFragment::class.java)) {
-                (fragment as GemsPurchaseFragment).purchaseGems(PurchaseTypes.Purchase84Gems)
+                (fragment as? GemsPurchaseFragment)?.purchaseGems(PurchaseTypes.Purchase84Gems)
             }
         }
     }
@@ -204,7 +209,7 @@ class GemPurchaseActivity : BaseActivity(), InAppMessageListener {
 
         viewPager.adapter = object : FragmentPagerAdapter(fragmentManager) {
 
-            override fun getItem(position: Int): Fragment {
+            override fun getItem(position: Int): androidx.fragment.app.Fragment {
                 val gemPurchasePosition = if (showSubscriptionPageFirst) 1 else 0
                 val fragment: CheckoutFragment = if (position == gemPurchasePosition) {
                     GemsPurchaseFragment()
@@ -221,7 +226,7 @@ class GemPurchaseActivity : BaseActivity(), InAppMessageListener {
                 if (billingRequests != null) {
                     fragment.setBillingRequests(billingRequests)
                 }
-                return fragment as Fragment
+                return fragment as androidx.fragment.app.Fragment
             }
 
             override fun getCount(): Int {
@@ -264,6 +269,13 @@ class GemPurchaseActivity : BaseActivity(), InAppMessageListener {
         })
     }
 
+    @Subscribe
+    fun onConsumablePurchased(event: ConsumablePurchasedEvent) {
+        if (isActive) {
+            consumePurchase(event.purchase)
+        }
+    }
+
     interface CheckoutFragment {
 
         fun setupCheckout()
@@ -273,4 +285,18 @@ class GemPurchaseActivity : BaseActivity(), InAppMessageListener {
         fun setBillingRequests(billingRequests: BillingRequests?)
     }
 
+    private fun consumePurchase(purchase: Purchase) {
+        if (PurchaseTypes.allGemTypes.contains(purchase.sku) || PurchaseTypes.allSubscriptionNoRenewTypes.contains(purchase.sku)) {
+            billingRequests?.consume(purchase.token, object : RequestListener<Any> {
+
+                override fun onSuccess(result: Any) {
+
+                }
+
+                override fun onError(response: Int, e: Exception) {
+                    crashlyticsProxy.fabricLogE("PurchaseConsumeException", "Consume", e)
+                }
+            })
+        }
+    }
 }

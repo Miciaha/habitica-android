@@ -2,14 +2,14 @@ package com.habitrpg.android.habitica.ui.helpers
 
 import android.graphics.Bitmap
 import android.graphics.PorterDuff
-import android.net.Uri
-import android.support.v4.content.ContextCompat
-import android.support.v4.content.res.ResourcesCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import android.view.View
 import android.view.animation.Animation
 import android.view.animation.Transformation
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.net.toUri
 import com.facebook.common.executors.CallerThreadExecutor
 import com.facebook.common.references.CloseableReference
 import com.facebook.datasource.DataSource
@@ -19,7 +19,6 @@ import com.facebook.imagepipeline.datasource.BaseBitmapDataSubscriber
 import com.facebook.imagepipeline.image.CloseableImage
 import com.facebook.imagepipeline.request.ImageRequestBuilder
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.extensions.backgroundCompat
 
 object DataBindingUtils {
 
@@ -44,7 +43,7 @@ object DataBindingUtils {
 
     fun loadImage(imageName: String, imageFormat: String = "png", imageResult: (Bitmap) -> Unit) {
         val imageRequest = ImageRequestBuilder
-                .newBuilderWithSource(Uri.parse("https://habitica-assets.s3.amazonaws.com/mobileApp/images/$imageName.$imageFormat"))
+                .newBuilderWithSource("https://habitica-assets.s3.amazonaws.com/mobileApp/images/$imageName.$imageFormat".toUri())
                 .build()
 
         val imagePipeline = Fresco.getImagePipeline()
@@ -75,7 +74,7 @@ object DataBindingUtils {
     fun setRoundedBackground(view: View, color: Int) {
         val drawable = ResourcesCompat.getDrawable(view.resources, R.drawable.layout_rounded_bg, null)
         drawable?.setColorFilter(color, PorterDuff.Mode.MULTIPLY)
-        view.backgroundCompat = drawable
+        view.background = drawable
     }
 
     fun setRoundedBackgroundInt(view: View, color: Int) {

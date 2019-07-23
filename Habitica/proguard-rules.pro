@@ -63,8 +63,8 @@
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
 
-#keep models
--keep class com.habitrpg.android.habitica.models.** { *; }
+#keep Habitica code
+-keep class com.habitrpg.android.habitica.** { *; }
 
 #realm
 -keep class io.realm.annotations.RealmModule
@@ -174,9 +174,19 @@
 -dontwarn rx.**
 -dontwarn com.android.volley.toolbox.**
 -dontwarn com.facebook.infer.**
--dontwarn com.roughike.bottombar.**
+-dontwarn com.habitrpg.android.habitica.ui.views.bottombar.**
 -dontwarn com.viewpagerindicator.**
 #-ignorewarnings
 
 -keep class com.google.firebase.provider.FirebaseInitProvider
--keep class com.example.instabug.**
+
+#keep all enums
+-keepclassmembers enum * { *; }
+-keep class Type {
+    public *;
+}
+-keepclassmembers class * extends java.lang.Enum {
+    <fields>;
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}

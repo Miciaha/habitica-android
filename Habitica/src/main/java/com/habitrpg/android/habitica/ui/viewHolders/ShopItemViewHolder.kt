@@ -2,14 +2,13 @@ package com.habitrpg.android.habitica.ui.viewHolders
 
 import android.content.Context
 import android.graphics.drawable.BitmapDrawable
-import android.support.v7.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import com.facebook.drawee.view.SimpleDraweeView
 import com.habitrpg.android.habitica.HabiticaBaseApplication
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.extensions.backgroundCompat
 import com.habitrpg.android.habitica.models.shops.ShopItem
 import com.habitrpg.android.habitica.ui.helpers.DataBindingUtils
 import com.habitrpg.android.habitica.ui.helpers.bindView
@@ -40,7 +39,7 @@ class ShopItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView), Vi
         field = value
         if (value > 0) {
             itemDetailIndicator.text = value.toString()
-            itemDetailIndicator.backgroundCompat = countDrawable
+            itemDetailIndicator.background = countDrawable
             itemDetailIndicator.visibility = View.VISIBLE
         }
     }
@@ -80,13 +79,13 @@ class ShopItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView), Vi
         itemDetailIndicator.text = null
         itemDetailIndicator.visibility = View.GONE
         if (item.isLimited) {
-            itemDetailIndicator.backgroundCompat = limitedDrawable
+            itemDetailIndicator.background = limitedDrawable
             itemDetailIndicator.visibility = View.VISIBLE
         }
 
         priceLabel.isLocked = item.locked || !canBuy
         if (item.locked) {
-            itemDetailIndicator.backgroundCompat = lockedDrawable
+            itemDetailIndicator.background = lockedDrawable
             itemDetailIndicator.visibility = View.VISIBLE
         }
     }
@@ -94,7 +93,7 @@ class ShopItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView), Vi
     override fun onClick(view: View) {
         val item = item
         if (item != null) {
-            val dialog = PurchaseDialog(context, HabiticaBaseApplication.component, item)
+            val dialog = PurchaseDialog(context, HabiticaBaseApplication.userComponent, item)
             dialog.shopIdentifier = shopIdentifier
             dialog.isPinned = isPinned
             dialog.show()
