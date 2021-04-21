@@ -1,7 +1,6 @@
 package com.habitrpg.android.habitica.helpers;
 
 import com.habitrpg.android.habitica.R;
-import com.habitrpg.android.habitica.models.HabitRpgClass;
 import com.habitrpg.android.habitica.models.inventory.Equipment;
 import com.habitrpg.android.habitica.models.members.Member;
 import com.habitrpg.android.habitica.models.user.Stats;
@@ -54,61 +53,61 @@ public class UserStatComputerTest {
         List<UserStatComputer.StatsRow> statsRows = userStatComputer.computeClassBonus(equipmentList, user);
         UserStatComputer.EquipmentRow equipmentRow = (UserStatComputer.EquipmentRow) statsRows.get(0);
 
-        Assert.assertEquals(key, equipmentRow.gearKey);
-        Assert.assertEquals(text, equipmentRow.text);
-        Assert.assertEquals("STR 1, INT 2, CON 4, PER 3", equipmentRow.stats);
+        Assert.assertEquals(key, equipmentRow.getGearKey());
+        Assert.assertEquals(text, equipmentRow.getText());
+        Assert.assertEquals("STR 1, INT 2, CON 4, PER 3", equipmentRow.getStats());
     }
 
     @Test
     public void shouldReturnClassBonusRowWhenClassMatches () {
-        user.getStats().setHabitClass(HabitRpgClass.rogue);
-        equipment.setKlass(HabitRpgClass.rogue.toString());
+        user.getStats().setHabitClass(Stats.ROGUE);
+        equipment.setKlass(Stats.ROGUE);
 
         List<UserStatComputer.StatsRow> statsRows = userStatComputer.computeClassBonus(equipmentList, user);
         UserStatComputer.AttributeRow attributeRow = (UserStatComputer.AttributeRow) statsRows.get(2);
 
-        Assert.assertEquals(R.string.profile_class_bonus, attributeRow.labelId);
-        Assert.assertEquals(str * 0.5f, attributeRow.strVal);
-        Assert.assertEquals(intStat * 0.0f, attributeRow.intVal);
-        Assert.assertEquals(con * 0.0f, attributeRow.conVal);
-        Assert.assertEquals(per * 0.5f, attributeRow.perVal);
-        Assert.assertFalse(attributeRow.roundDown);
-        Assert.assertFalse(attributeRow.isSummary);
+        Assert.assertEquals(R.string.profile_class_bonus, attributeRow.getLabelId());
+        Assert.assertEquals(str * 0.5f, attributeRow.getStrVal());
+        Assert.assertEquals(intStat * 0.0f, attributeRow.getIntVal());
+        Assert.assertEquals(con * 0.0f, attributeRow.getConVal());
+        Assert.assertEquals(per * 0.5f, attributeRow.getPerVal());
+        Assert.assertFalse(attributeRow.getRoundDown());
+        Assert.assertFalse(attributeRow.getSummary());
     }
 
     @Test
     public void ShouldReturnClassBonusRowWhenSpecialClassMatches () {
-        user.getStats().setHabitClass(HabitRpgClass.rogue);
+        user.getStats().setHabitClass(Stats.ROGUE);
         equipment.setKlass("");
-        equipment.setSpecialClass(HabitRpgClass.rogue.toString());
+        equipment.setSpecialClass(Stats.ROGUE);
 
         List<UserStatComputer.StatsRow> statsRows = userStatComputer.computeClassBonus(equipmentList, user);
         UserStatComputer.AttributeRow attributeRow = (UserStatComputer.AttributeRow) statsRows.get(2);
 
-        Assert.assertEquals(R.string.profile_class_bonus, attributeRow.labelId);
-        Assert.assertEquals(str * 0.5f, attributeRow.strVal);
-        Assert.assertEquals(intStat * 0.0f, attributeRow.intVal);
-        Assert.assertEquals(con * 0.0f, attributeRow.conVal);
-        Assert.assertEquals(per * 0.5f, attributeRow.perVal);
-        Assert.assertFalse(attributeRow.roundDown);
-        Assert.assertFalse(attributeRow.isSummary);
+        Assert.assertEquals(R.string.profile_class_bonus, attributeRow.getLabelId());
+        Assert.assertEquals(str * 0.5f, attributeRow.getStrVal());
+        Assert.assertEquals(intStat * 0.0f, attributeRow.getIntVal());
+        Assert.assertEquals(con * 0.0f, attributeRow.getConVal());
+        Assert.assertEquals(per * 0.5f, attributeRow.getPerVal());
+        Assert.assertFalse(attributeRow.getRoundDown());
+        Assert.assertFalse(attributeRow.getSummary());
     }
 
     @Test
     public void shouldNotReturnClassBonusWhenClassDoesNotMatch () {
-        user.getStats().setHabitClass(HabitRpgClass.rogue);
+        user.getStats().setHabitClass(Stats.ROGUE);
         equipment.setKlass("");
         equipment.setSpecialClass("");
 
         List<UserStatComputer.StatsRow> statsRows = userStatComputer.computeClassBonus(equipmentList, user);
         UserStatComputer.AttributeRow attributeRow = (UserStatComputer.AttributeRow) statsRows.get(2);
 
-        Assert.assertEquals(R.string.profile_class_bonus, attributeRow.labelId);
-        Assert.assertEquals(str *0.0f, attributeRow.strVal);
-        Assert.assertEquals(intStat * 0.0f, attributeRow.intVal);
-        Assert.assertEquals(con * 0.0f, attributeRow.conVal);
-        Assert.assertEquals(per * 0.0f, attributeRow.perVal);
-        Assert.assertFalse(attributeRow.roundDown);
-        Assert.assertFalse(attributeRow.isSummary);
+        Assert.assertEquals(R.string.profile_class_bonus, attributeRow.getLabelId());
+        Assert.assertEquals(str *0.0f, attributeRow.getStrVal());
+        Assert.assertEquals(intStat * 0.0f, attributeRow.getIntVal());
+        Assert.assertEquals(con * 0.0f, attributeRow.getConVal());
+        Assert.assertEquals(per * 0.0f, attributeRow.getPerVal());
+        Assert.assertFalse(attributeRow.getRoundDown());
+        Assert.assertFalse(attributeRow.getSummary());
     }
 }

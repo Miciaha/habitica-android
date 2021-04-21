@@ -1,27 +1,30 @@
 package com.habitrpg.android.habitica.ui.activities
 
 import android.app.ProgressDialog
+import android.graphics.PorterDuff
 import android.os.Bundle
-import androidx.core.content.ContextCompat
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.widget.EditText
+import androidx.core.content.ContextCompat
 import com.habitrpg.android.habitica.R
 import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.UserRepository
+import com.habitrpg.android.habitica.databinding.ActivityFixcharacterBinding
+import com.habitrpg.android.habitica.extensions.setTintWith
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.models.user.Stats
 import com.habitrpg.android.habitica.models.user.User
 import com.habitrpg.android.habitica.modules.AppModule
 import com.habitrpg.android.habitica.ui.views.HabiticaIconsHelper
-import com.habitrpg.android.habitica.ui.views.settings.FixValuesEditText
-import io.reactivex.functions.Action
-import io.reactivex.functions.Consumer
-import kotlinx.android.synthetic.main.activity_fixcharacter.*
+import com.habitrpg.android.habitica.ui.views.dialogs.HabiticaProgressDialog
 import javax.inject.Inject
 import javax.inject.Named
 
 class FixCharacterValuesActivity: BaseActivity() {
 
+    private lateinit var binding: ActivityFixcharacterBinding
     @Inject
     lateinit var repository: UserRepository
 
@@ -29,6 +32,11 @@ class FixCharacterValuesActivity: BaseActivity() {
     lateinit var userId: String
 
     override fun getLayoutResId(): Int = R.layout.activity_fixcharacter
+
+    override fun getContentView(): View {
+        binding = ActivityFixcharacterBinding.inflate(layoutInflater)
+        return binding.root
+    }
 
     override fun injectActivity(component: UserComponent?) {
         component?.inject(this)
@@ -38,35 +46,48 @@ class FixCharacterValuesActivity: BaseActivity() {
         super.onCreate(savedInstanceState)
 
         setTitle(R.string.fix_character_values)
-        setupToolbar(toolbar)
+        setupToolbar(binding.toolbar)
 
-        repository.getUser(userId).firstElement().subscribe(Consumer {
+        compositeSubscription.add(repository.getUser(userId).firstElement().subscribe({
             user = it
-        }, RxErrorHandler.handleEmptyError())
+        }, RxErrorHandler.handleEmptyError()))
+
+        setIconBackground(binding.healthIconBackgroundView, ContextCompat.getColor(this, R.color.red_500))
+        setIconBackground(binding.experienceIconBackgroundView, ContextCompat.getColor(this, R.color.yellow_500))
+        setIconBackground(binding.manaIconBackgroundView, ContextCompat.getColor(this, R.color.blue_500))
+        setIconBackground(binding.goldIconBackgroundView, ContextCompat.getColor(this, R.color.yellow_500))
+        setIconBackground(binding.streakIconBackgroundView, ContextCompat.getColor(this, R.color.separator))
+
+        binding.healthIconView.setImageBitmap(HabiticaIconsHelper.imageOfHeartLightBg())
+        binding.experienceIconView.setImageBitmap(HabiticaIconsHelper.imageOfExperience())
+        binding.manaIconView.setImageBitmap(HabiticaIconsHelper.imageOfMagic())
+        binding.goldIconView.setImageBitmap(HabiticaIconsHelper.imageOfGold())
+        binding.streakIconView.setImageResource(R.drawable.achievement_thermometer)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_save, menu)
-        return true
+        return super.onCreateOptionsMenu(menu)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
-        val id = item?.itemId
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        val id = item.itemId
 
         if (id == R.id.action_save_changes) {
-            @Suppress("DEPRECATION")
-            val progressDialog = ProgressDialog.show(this, getString(R.string.saving), "")
+            val dialog = HabiticaProgressDialog.show(this, R.string.saving)
             val userInfo = HashMap<String, Any>()
-            userInfo["stats.hp"] = healthEditText.getDoubleValue()
-            userInfo["stats.exp"] = experienceEditText.getDoubleValue()
-            userInfo["stats.gp"] = goldEditText.getDoubleValue()
-            userInfo["stats.mp"] = manaEditText.getDoubleValue()
-            userInfo["stats.lvl"] = levelEditText.getDoubleValue().toInt()
-            userInfo["achievements.streak"] = streakEditText.getDoubleValue().toInt()
-            repository.updateUser(user, userInfo).subscribe(Consumer {}, RxErrorHandler.handleEmptyError(), Action {
-                progressDialog.dismiss()
+            userInfo["stats.hp"] = binding.healthEditText.getDoubleValue()
+            userInfo["stats.exp"] = binding.experienceEditText.getDoubleValue()
+            userInfo["stats.gp"] = binding.goldEditText.getDoubleValue()
+            userInfo["stats.mp"] = binding.manaEditText.getDoubleValue()
+            userInfo["stats.lvl"] = binding.levelEditText.getDoubleValue().toInt()
+            userInfo["achievements.streak"] = binding.streakEditText.getDoubleValue().toInt()
+            compositeSubscription.add(repository.updateUser(userInfo)
+                    .flatMap { repository.retrieveUser(false, true, true) }
+                    .subscribe({}, RxErrorHandler.handleEmptyError(), {
+                dialog?.dismiss()
                 finish()
-            })
+            }))
             return true
         }
 
@@ -82,35 +103,43 @@ class FixCharacterValuesActivity: BaseActivity() {
     }
 
     private fun updateFields(user: User) {
-        healthEditText.text = user.stats?.hp.toString()
-        experienceEditText.text = user.stats?.exp.toString()
-        goldEditText.text = user.stats?.gp.toString()
-        manaEditText.text = user.stats?.mp.toString()
-        levelEditText.text = user.stats?.lvl.toString()
-        streakEditText.text = user.streakCount.toString()
+        val stats = user.stats ?: return
+        binding.healthEditText.setText(stats.hp.toString())
+        binding.experienceEditText.setText(stats.exp.toString())
+        binding.goldEditText.setText(stats.gp.toString())
+        binding.manaEditText.setText(stats.mp.toString())
+        binding.levelEditText.setText(stats.lvl.toString())
+        binding.streakEditText.setText(user.streakCount.toString())
 
-        when (user.stats?.habitClass) {
+        when (stats.habitClass) {
             Stats.WARRIOR -> {
-                levelEditText.iconBackgroundColor = ContextCompat.getColor(this, R.color.red_500)
-                levelEditText.setIconBitmap(HabiticaIconsHelper.imageOfWarriorLightBg())
+                setIconBackground(binding.levelIconBackgroundView, ContextCompat.getColor(this, R.color.red_500))
+                binding.levelIconView.setImageBitmap(HabiticaIconsHelper.imageOfWarriorLightBg())
             }
             Stats.MAGE -> {
-                levelEditText.iconBackgroundColor = ContextCompat.getColor(this, R.color.blue_500)
-                levelEditText.setIconBitmap(HabiticaIconsHelper.imageOfMageLightBg())
+                setIconBackground(binding.levelIconBackgroundView, ContextCompat.getColor(this, R.color.blue_500))
+                binding.levelIconView.setImageBitmap(HabiticaIconsHelper.imageOfMageLightBg())
             }
             Stats.HEALER -> {
-                levelEditText.iconBackgroundColor = ContextCompat.getColor(this, R.color.yellow_500)
-                levelEditText.setIconBitmap(HabiticaIconsHelper.imageOfHealerLightBg())
+                setIconBackground(binding.levelIconBackgroundView, ContextCompat.getColor(this, R.color.yellow_500))
+                binding.levelIconView.setImageBitmap(HabiticaIconsHelper.imageOfHealerLightBg())
             }
             Stats.ROGUE -> {
-                levelEditText.iconBackgroundColor = ContextCompat.getColor(this, R.color.brand_500)
-                levelEditText.setIconBitmap(HabiticaIconsHelper.imageOfRogueLightBg())
+                setIconBackground(binding.levelIconBackgroundView, ContextCompat.getColor(this, R.color.brand_500))
+                binding.levelIconView.setImageBitmap(HabiticaIconsHelper.imageOfRogueLightBg())
             }
         }
     }
 
-    fun FixValuesEditText.getDoubleValue(): Double {
-        val stringValue = this.text
+    private fun setIconBackground(view: View, color: Int) {
+        val backgroundDrawable = ContextCompat.getDrawable(this, R.drawable.layout_rounded_bg)
+        backgroundDrawable?.setTintWith(color, PorterDuff.Mode.MULTIPLY)
+        backgroundDrawable?.alpha = 50
+        view.background = backgroundDrawable
+    }
+
+    private fun EditText.getDoubleValue(): Double {
+        val stringValue = this.text.toString()
         return try {
             stringValue.toDouble()
         } catch (_: NumberFormatException) {

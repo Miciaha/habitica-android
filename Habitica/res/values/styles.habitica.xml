@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- All possible font familys -->
-    <string name="font_family_light">sans-serif-light</string>
     <string name="font_family_medium">sans-serif-medium</string>
     <string name="font_family_regular">sans-serif</string>
     <string name="font_family_condensed">sans-serif-condensed</string>
-    <string name="font_family_black">sans-serif-black</string>
-    <string name="font_family_thin">sans-serif-thin</string>
 
     <!-- Titles -->
     <style name="Title1">
@@ -14,10 +11,6 @@
         <item name="android:textSize">20sp</item>
         <item name="android:letterSpacing">0.07</item>
         <item name="android:textColor">?textColorPrimary</item>
-    </style>
-
-    <style name="Title1_WideLetterSpacing"  parent="@style/Title1">
-        <item name="android:letterSpacing">0.133</item>
     </style>
 
     <style name="Title2"  parent="@style/Title1">
@@ -58,7 +51,8 @@
     <style name="Subheader3">
         <item name="android:fontFamily">@string/font_family_regular</item>
         <item name="android:textSize">16sp</item>
-        <item name="android:letterSpacing">0.04</item>
+        <item name="android:letterSpacing">0.015</item>
+        <item name="android:lineSpacingExtra">6sp</item>
         <item name="android:textColor">?textColorSecondary</item>
     </style>
 
@@ -77,7 +71,7 @@
     </style>
 
     <style name="Body2">
-        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:fontFamily">@string/font_family_regular</item>
         <item name="android:textSize">14sp</item>
         <item name="android:letterSpacing">0.02</item>
         <item name="android:lineSpacingExtra">6sp</item>
@@ -96,7 +90,7 @@
     <!-- Captions -->
     <style name="Caption1">
         <item name="android:fontFamily">@string/font_family_regular</item>
-        <item name="android:textSize">14sp</item>
+        <item name="android:textSize">12sp</item>
         <item name="android:textStyle">bold</item>
     </style>
 

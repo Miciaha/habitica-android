@@ -9,7 +9,7 @@ import com.habitrpg.android.habitica.models.social.ChallengeMembership
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.models.tasks.TaskList
 import com.habitrpg.android.habitica.models.tasks.TasksOrder
-import io.reactivex.Flowable
+import io.reactivex.rxjava3.core.Flowable
 import io.realm.RealmResults
 
 
@@ -118,8 +118,8 @@ class ChallengeRepositoryImpl(localRepository: ChallengeLocalRepository, apiClie
         return localRepository.challenges
     }
 
-    override fun getUserChallenges(userId: String): Flowable<RealmResults<Challenge>> {
-        return localRepository.getUserChallenges(userId)
+    override fun getUserChallenges(userId: String?): Flowable<RealmResults<Challenge>> {
+        return localRepository.getUserChallenges(userId ?: userID)
     }
 
     override fun retrieveChallenges(page: Int, memberOnly: Boolean): Flowable<List<Challenge>> {

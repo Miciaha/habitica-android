@@ -5,16 +5,14 @@
     android:screenOrientation="portrait"
     android:installLocation="auto" >
 
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="com.android.vending.BILLING" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove" />
 
 
     <application
@@ -23,7 +21,7 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme"
+        android:theme="@style/MainAppTheme"
         tools:replace="android:name"
         android:fullBackupContent="@xml/backup_descriptor"
         android:configChanges="orientation"
@@ -34,8 +32,9 @@
         <activity
             android:name=".ui.activities.MainActivity"
             android:label="@string/app_name"
-            android:theme="@style/MainAppTheme"
-            android:windowSoftInputMode="stateHidden|adjustResize">
+            android:theme="@style/LaunchAppTheme"
+            android:windowSoftInputMode="stateHidden|adjustResize"
+            android:configChanges="orientation|screenSize">
             <nav-graph android:value="@navigation/navigation" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -49,6 +48,7 @@
                     android:host="habitica.com"
                     android:pathPattern="/"/>
             </intent-filter>
+
         </activity>
         <activity
             android:name=".ui.activities.PrefsActivity"
@@ -68,7 +68,7 @@
             android:name=".ui.activities.NotificationsActivity"
             android:parentActivityName=".ui.activities.MainActivity"
             android:label="@string/notifications"
-            android:screenOrientation="portrait"
+            android:screenOrientation="unspecified"
             tools:ignore="UnusedAttribute">
         </activity>
         <activity
@@ -80,12 +80,20 @@
         <activity
             android:name=".ui.activities.LoginActivity"
             android:label="@string/LoginActivityName"
-            android:theme="@style/AppTheme.NoActionBar"
+            android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize">
         </activity>
         <activity
+            android:name=".ui.activities.AdventureGuideActivity"
+            android:label=""
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.habitrpg.android.habitica.ui.activities.MainActivity" />
+        </activity>
+        <activity
             android:name=".ui.activities.IntroActivity"
-            android:theme="@style/AppTheme.NoActionBar"
             android:windowSoftInputMode="adjustResize">
         </activity>
         <activity
@@ -101,8 +109,12 @@
             android:label="@string/app_name">
         </activity>
         <activity
-            android:name=".ui.activities.GiftIAPActivity"
+            android:name=".ui.activities.GiftSubscriptionActivity"
             android:label="@string/gift_subscription">
+        </activity>
+        <activity
+            android:name=".ui.activities.GiftGemsActivity"
+            android:label="@string/gift_gems">
         </activity>
         <activity
             android:name=".ui.activities.GuidelinesActivity"
@@ -114,12 +126,10 @@
                 android:name="com.facebook.sdk.AutoLogAppEventsEnabled"
                 android:value="false"/>
         <activity
-            android:name=".ui.activities.AboutActivity"
-            android:theme="@style/AppThemeWithActionBarBlackText"/>
-        <activity
             android:name=".ui.activities.TaskFormActivity"
             android:parentActivityName=".ui.activities.MainActivity"
             tools:ignore="UnusedAttribute"
+            android:configChanges="orientation|screenSize"
             android:windowSoftInputMode="stateVisible|adjustResize">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
@@ -127,7 +137,6 @@
         </activity>
         <activity
             android:name=".ui.activities.GroupFormActivity"
-            android:theme="@style/AppTheme.NoActionBar"
             android:parentActivityName=".ui.activities.MainActivity"
             tools:ignore="UnusedAttribute">
             <meta-data
@@ -145,13 +154,12 @@
         </activity>
         <activity
             android:name=".ui.activities.GroupInviteActivity"
-            android:theme="@style/AppThemeWithActionBarBlackText"
             tools:ignore="UnusedAttribute">
         </activity>
         <activity
             android:name=".ui.activities.FullProfileActivity"
-            android:theme="@style/AppThemeWithActionBarBlackText"
             android:parentActivityName=".ui.activities.MainActivity"
+            android:theme="@style/MainAppTheme"
             tools:ignore="UnusedAttribute">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
@@ -167,7 +175,6 @@
         </activity>
         <activity
             android:name=".ui.activities.ChallengeFormActivity"
-            android:theme="@style/AppTheme.ActionBar"
             android:parentActivityName=".ui.activities.MainActivity"
             android:launchMode="singleTask"
             tools:ignore="UnusedAttribute">
@@ -179,16 +186,20 @@
             android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
             android:label="@string/app_name" />
         <activity android:name=".ui.activities.MaintenanceActivity"
-                  android:screenOrientation="portrait"
+                  android:screenOrientation="unspecified"
                   android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
         <activity android:name=".ui.activities.GemPurchaseActivity"
-                  android:screenOrientation="portrait" />
+                  android:screenOrientation="unspecified" />
         <activity android:name=".ui.activities.VerifyUsernameActivity"
-            android:screenOrientation="portrait"
+            android:screenOrientation="unspecified"
             android:windowSoftInputMode="stateHidden" />
         <receiver android:name=".receivers.NotificationPublisher" />
 
-        <receiver android:name=".receivers.TaskReceiver"/>
+        <receiver android:name=".receivers.TaskReceiver" android:enabled="true" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.NOTIFY" />
+            </intent-filter>
+        </receiver>
 
         <receiver android:name=".receivers.LocalNotificationActionReceiver"
             android:exported="false">
@@ -227,14 +238,6 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT"/>
             </intent-filter>
         </service>
-        <service
-            android:name=".helpers.notifications.HabiticaFirebaseInstanceIDService"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.INSTANCE_ID_EVENT"/>
-            </intent-filter>
-        </service>
-
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="@string/content_provider"

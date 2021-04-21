@@ -1,20 +1,22 @@
 package com.habitrpg.android.habitica.ui.fragments.social
 
+import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
-import com.facebook.drawee.view.SimpleDraweeView
+import androidx.core.text.parseAsHtml
+import androidx.core.text.toHtml
 import com.habitrpg.android.habitica.R
 import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.InventoryRepository
 import com.habitrpg.android.habitica.data.SocialRepository
+import com.habitrpg.android.habitica.databinding.FragmentQuestDetailBinding
+import com.habitrpg.android.habitica.extensions.fromHtml
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.models.inventory.Quest
 import com.habitrpg.android.habitica.models.inventory.QuestContent
@@ -24,14 +26,12 @@ import com.habitrpg.android.habitica.modules.AppModule
 import com.habitrpg.android.habitica.ui.fragments.BaseMainFragment
 import com.habitrpg.android.habitica.ui.helpers.DataBindingUtils
 import com.habitrpg.android.habitica.ui.helpers.MarkdownParser
-import com.habitrpg.android.habitica.ui.helpers.bindOptionalView
-import com.habitrpg.android.habitica.ui.helpers.resetViews
+import com.habitrpg.android.habitica.ui.helpers.setMarkdown
 import com.habitrpg.android.habitica.ui.views.dialogs.HabiticaAlertDialog
-import io.reactivex.functions.Consumer
 import javax.inject.Inject
 import javax.inject.Named
 
-class QuestDetailFragment : BaseMainFragment() {
+class QuestDetailFragment : BaseMainFragment<FragmentQuestDetailBinding>() {
 
     @Inject
     lateinit var socialRepository: SocialRepository
@@ -40,23 +40,12 @@ class QuestDetailFragment : BaseMainFragment() {
     @field:[Inject Named(AppModule.NAMED_USER_ID)]
     lateinit var userId: String
 
-    private val questTitleView: TextView? by bindOptionalView(R.id.title_view)
-    private val questScrollImageView: SimpleDraweeView? by bindOptionalView(R.id.quest_scroll_image_view)
-    private val questLeaderView: TextView? by bindOptionalView(R.id.quest_leader_view)
-    private val questDescriptionView: TextView? by bindOptionalView(R.id.description_view)
-    private val questParticipantList: LinearLayout? by bindOptionalView(R.id.quest_participant_list)
-    private val participantHeader: TextView? by bindOptionalView(R.id.participants_header)
-    private val participantHeaderCount: TextView? by bindOptionalView(R.id.participants_header_count)
-    private val questParticipantResponseWrapper: ViewGroup? by bindOptionalView(R.id.quest_participant_response_wrapper)
-    private val questLeaderResponseWrapper: ViewGroup? by bindOptionalView(R.id.quest_leader_response_wrapper)
-    private val questAcceptButton: Button? by bindOptionalView(R.id.quest_accept_button)
-    private val questRejectButton: Button? by bindOptionalView(R.id.quest_reject_button)
-    private val questBeginButton: Button? by bindOptionalView(R.id.quest_begin_button)
-    private val questCancelButton: Button? by bindOptionalView(R.id.quest_cancel_button)
-    private val questAbortButton: Button? by bindOptionalView(R.id.quest_abort_button)
+    override var binding: FragmentQuestDetailBinding? = null
 
-    var partyId: String? = null
-    var questKey: String? = null
+    override fun createBinding(inflater: LayoutInflater, container: ViewGroup?): FragmentQuestDetailBinding {
+        return FragmentQuestDetailBinding.inflate(inflater, container, false)
+    }
+
     private var party: Group? = null
     private var quest: Quest? = null
     private var beginQuestMessage: String? = null
@@ -66,72 +55,71 @@ class QuestDetailFragment : BaseMainFragment() {
 
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        super.onCreateView(inflater, container, savedInstanceState)
         this.hidesToolbar = true
-        return inflater.inflate(R.layout.fragment_quest_detail, container, false)
+        return super.onCreateView(inflater, container, savedInstanceState)
     }
 
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        showsBackButton = true
         super.onViewCreated(view, savedInstanceState)
 
-        arguments?.let {
-            val args = QuestDetailFragmentArgs.fromBundle(it)
-            partyId = args.partyID
-            questKey = args.questKey
-        }
+        binding?.questBeginButton?.setOnClickListener { onQuestBegin() }
+        binding?.questCancelButton?.setOnClickListener { onQuestCancel() }
+        binding?.questLeaveButton?.setOnClickListener { onQuestLeave() }
 
-        resetViews()
-
-        questAcceptButton?.setOnClickListener { onQuestAccept() }
-        questRejectButton?.setOnClickListener { onQuestReject() }
-        questBeginButton?.setOnClickListener { onQuestBegin() }
-        questCancelButton?.setOnClickListener { onQuestCancel() }
-        questAbortButton?.setOnClickListener { onQuestAbort() }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        compositeSubscription.add(socialRepository.getGroup(partyId)
-                .subscribe(Consumer { this.updateParty(it) }, RxErrorHandler.handleEmptyError()))
-        if (questKey != null) {
-            compositeSubscription.add(inventoryRepository.getQuestContent(questKey ?: "")
-                    .subscribe(Consumer { this.updateQuestContent(it) }, RxErrorHandler.handleEmptyError()))
-        }
+        compositeSubscription.add(
+                userRepository.getUser()
+                        .map {
+                            it.party?.id ?: ""
+                        }
+                        .skipWhile { it.isBlank() }
+                        .distinctUntilChanged()
+                        .flatMap { socialRepository.getGroup(it) }
+                        .doOnNext { updateParty(it) }
+                        .map {
+                            it.quest?.key ?: ""
+                        }
+                        .skipWhile {
+                            it.isBlank()
+                        }
+                        .distinctUntilChanged()
+                        .flatMap { inventoryRepository.getQuestContent(it) }
+                        .subscribe({
+                            updateQuestContent(it)
+                        }, RxErrorHandler.handleEmptyError())
+        )
     }
 
     private fun updateParty(group: Group?) {
-        if (questTitleView == null || group == null || group.quest == null) {
+        if (binding?.titleView == null || group == null || group.quest == null) {
             return
         }
         party = group
         quest = group.quest
         setQuestParticipants(group.quest?.participants)
-        compositeSubscription.add(socialRepository.getMember(quest?.leader).firstElement().subscribe(Consumer { member ->
-            if (context != null && questLeaderView != null && member != null) {
-                questLeaderView?.text = context?.getString(R.string.quest_leader_header, member.displayName)
+        compositeSubscription.add(socialRepository.getMember(quest?.leader).subscribe({ member ->
+            if (context != null && binding?.questLeaderView != null && member != null) {
+                binding?.questLeaderView?.text = context?.getString(R.string.quest_leader_header, member.displayName)
             }
         }, RxErrorHandler.handleEmptyError()))
 
-        if (questLeaderResponseWrapper != null) {
-            if (showParticipatantButtons()) {
-                questLeaderResponseWrapper?.visibility = View.GONE
-                questParticipantResponseWrapper?.visibility = View.VISIBLE
-            } else if (showLeaderButtons()) {
-                questParticipantResponseWrapper?.visibility = View.GONE
-                questLeaderResponseWrapper?.visibility = View.VISIBLE
+        if (binding?.questResponseWrapper != null) {
+            if (userId != party?.quest?.leader && user?.party?.quest?.key == group.quest?.key && user?.party?.quest?.RSVPNeeded == false) {
+                binding?.questLeaveButton?.visibility = View.VISIBLE
+            } else {
+                binding?.questLeaveButton?.visibility = View.GONE
+            }
+            if (showLeaderButtons()) {
+                binding?.questCancelButton?.visibility = View.VISIBLE
                 if (isQuestActive) {
-                    questBeginButton?.visibility = View.GONE
-                    questCancelButton?.visibility = View.GONE
-                    questAbortButton?.visibility = View.VISIBLE
+                    binding?.questBeginButton?.visibility = View.GONE
                 } else {
-                    questBeginButton?.visibility = View.VISIBLE
-                    questCancelButton?.visibility = View.VISIBLE
-                    questAbortButton?.visibility = View.GONE
+                    binding?.questBeginButton?.visibility = View.VISIBLE
                 }
             } else {
-                questLeaderResponseWrapper?.visibility = View.GONE
-                questParticipantResponseWrapper?.visibility = View.GONE
+                binding?.questCancelButton?.visibility = View.GONE
+                binding?.questBeginButton?.visibility = View.GONE
             }
         }
     }
@@ -140,73 +128,68 @@ class QuestDetailFragment : BaseMainFragment() {
         return userId == party?.quest?.leader || userId == party?.leaderID
     }
 
-    private fun showParticipatantButtons(): Boolean {
-        return if (user == null || user?.party == null || user?.party?.quest == null) {
-            false
-        } else !isQuestActive && user?.party?.quest?.RSVPNeeded == true
-    }
-
-
     private fun updateQuestContent(questContent: QuestContent) {
-        if (questTitleView == null || !questContent.isManaged) {
+        if (binding?.titleView == null || !questContent.isManaged) {
             return
         }
-        questTitleView?.text = questContent.text
-        //TODO: FIX
-        questDescriptionView?.text = MarkdownParser.parseMarkdown(questContent.notes)
-        DataBindingUtils.loadImage(questScrollImageView, "inventory_quest_scroll_" + questContent.key)
+        binding?.titleView?.text = questContent.text
+        // We need to do this, because the quest description can contain markdown AND HTML.
+        binding?.descriptionView?.setText(MarkdownParser.parseMarkdown(questContent.notes).toHtml().fromHtml(), TextView.BufferType.SPANNABLE)
+
+        DataBindingUtils.loadImage(binding?.questScrollImageView, "inventory_quest_scroll_" + questContent.key)
     }
 
     private fun setQuestParticipants(participants: List<Member>?) {
-        if (questParticipantList == null) {
+        if (binding?.questParticipantList == null) {
             return
         }
-        questParticipantList?.removeAllViews()
+        binding?.questParticipantList?.removeAllViews()
         val inflater = context?.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as? LayoutInflater
         var participantCount = 0
         for (participant in participants ?: emptyList()) {
             if (quest?.active == true && participant.participatesInQuest == false) {
                 continue
             }
-            val participantView = inflater?.inflate(R.layout.quest_participant, questParticipantList, false)
+            val participantView = inflater?.inflate(R.layout.quest_participant, binding?.questParticipantList, false)
             val textView = participantView?.findViewById<View>(R.id.participant_name) as? TextView
             textView?.text = participant.displayName
             val statusTextView = participantView?.findViewById<View>(R.id.status_view) as? TextView
             if (quest?.active == false) {
                 context?.let {
-                    when {
-                        participant.participatesInQuest == null -> {
+                    when (participant.participatesInQuest) {
+                        null -> {
                             statusTextView?.setText(R.string.pending)
-                            statusTextView?.setTextColor(ContextCompat.getColor(it, R.color.gray_200))
+                            statusTextView?.setTextColor(ContextCompat.getColor(it, R.color.text_ternary))
                         }
-                        participant.participatesInQuest == true -> {
+                        true -> {
                             statusTextView?.setText(R.string.accepted)
-                            statusTextView?.setTextColor(ContextCompat.getColor(it, R.color.green_100))
+                            statusTextView?.setTextColor(ContextCompat.getColor(it, R.color.text_green))
                         }
                         else -> {
                             statusTextView?.setText(R.string.declined)
-                            statusTextView?.setTextColor(ContextCompat.getColor(it, R.color.red_100))
+                            statusTextView?.setTextColor(ContextCompat.getColor(it, R.color.text_red))
                         }
                     }
                 }
-                questParticipantList?.addView(participantView)
+                binding?.questParticipantList?.addView(participantView)
             } else {
                 statusTextView?.visibility = View.GONE
                 if (participant.participatesInQuest == true) {
-                    questParticipantList?.addView(participantView)
+                    binding?.questParticipantList?.addView(participantView)
                 }
             }
-            if (quest?.active == true || participant.participatesInQuest == true) {
+            if (participant.participatesInQuest == true) {
                 participantCount += 1
             }
         }
         if (quest?.active == true) {
-            participantHeader?.setText(R.string.participants)
-            participantHeaderCount?.text = participantCount.toString()
+            binding?.participantsHeader?.setText(R.string.participants)
+            binding?.participantsHeaderCount?.text = participantCount.toString()
         } else {
-            participantHeader?.setText(R.string.invitations)
-            participantHeaderCount?.text = participantCount.toString() + "/" + quest?.participants?.size
-            beginQuestMessage = getString(R.string.quest_begin_message, participantCount, quest?.participants?.size)
+            binding?.participantsHeader?.setText(R.string.invitations)
+            @SuppressLint("SetTextI18n")
+            binding?.participantsHeaderCount?.text = participantCount.toString() + "/" + participants?.size
+            beginQuestMessage = getString(R.string.quest_begin_message, participantCount, participants?.size)
         }
     }
 
@@ -215,19 +198,6 @@ class QuestDetailFragment : BaseMainFragment() {
         userRepository.close()
         inventoryRepository.close()
         super.onDestroyView()
-    }
-
-    private fun onQuestAccept() {
-        partyId?.let { partyID ->
-        socialRepository.acceptQuest(user, partyID).subscribe(Consumer { }, RxErrorHandler.handleEmptyError())
-        }
-    }
-
-
-    private fun onQuestReject() {
-        partyId?.let { partyID ->
-            socialRepository.rejectQuest(user, partyID).subscribe(Consumer { }, RxErrorHandler.handleEmptyError())
-        }
     }
 
     private fun onQuestBegin() {
@@ -239,7 +209,7 @@ class QuestDetailFragment : BaseMainFragment() {
                 val party = party
                 if (party != null) {
                     socialRepository.forceStartQuest(party)
-                            .subscribe(Consumer { }, RxErrorHandler.handleEmptyError())
+                            .subscribe({ }, RxErrorHandler.handleEmptyError())
                 }
             }
             alert.addButton(R.string.no, false)
@@ -249,28 +219,45 @@ class QuestDetailFragment : BaseMainFragment() {
 
     private fun onQuestCancel() {
         context?.let {
-            val alert = HabiticaAlertDialog(it)
-            alert.setMessage(R.string.quest_cancel_message)
-            alert.addButton(R.string.yes, true) { _, _ ->
-                partyId?.let { partyID ->
-                    @Suppress("DEPRECATION")
-                    socialRepository.cancelQuest(partyID)
-                            .subscribe(Consumer { getActivity()?.fragmentManager?.popBackStack() }, RxErrorHandler.handleEmptyError())
+            if (isQuestActive) {
+                val builder = AlertDialog.Builder(getActivity())
+                        .setMessage(R.string.quest_abort_message)
+                        .setPositiveButton(R.string.yes) { _, _ ->
+                            party?.id?.let { partyID ->
+                                @Suppress("DEPRECATION")
+                                socialRepository.abortQuest(partyID)
+                                        .flatMap { userRepository.retrieveUser() }
+                                        .subscribe({ getActivity()?.supportFragmentManager?.popBackStack() }, RxErrorHandler.handleEmptyError())
+                            }
+                        }.setNegativeButton(R.string.no) { _, _ -> }
+                builder.show()
+            } else {
+                val alert = HabiticaAlertDialog(it)
+                alert.setMessage(R.string.quest_cancel_message)
+                alert.addButton(R.string.yes, true) { _, _ ->
+                    party?.id?.let { partyID ->
+                        @Suppress("DEPRECATION")
+                        socialRepository.cancelQuest(partyID)
+                                .flatMap { userRepository.retrieveUser() }
+                                .subscribe({ getActivity()?.supportFragmentManager?.popBackStack() }, RxErrorHandler.handleEmptyError())
+                    }
                 }
+                alert.addButton(R.string.no, false)
+                alert.show()
             }
-            alert.addButton(R.string.no, false)
-            alert.show()
         }
     }
 
-    private fun onQuestAbort() {
+    private fun onQuestLeave() {
         val builder = AlertDialog.Builder(getActivity())
-                .setMessage(R.string.quest_abort_message)
+                .setMessage(if (quest?.active == true) R.string.quest_leave_message else R.string.quest_leave_message_nostart)
                 .setPositiveButton(R.string.yes) { _, _ ->
-                    partyId?.let { partyID ->
+                    party?.id?.let { partyID ->
                         @Suppress("DEPRECATION")
-                        socialRepository.abortQuest(partyID)
-                                .subscribe(Consumer { getActivity()?.fragmentManager?.popBackStack() }, RxErrorHandler.handleEmptyError())
+                        socialRepository.leaveQuest(partyID)
+                                .flatMap { userRepository.retrieveUser() }
+                                .flatMap { socialRepository.retrieveGroup(partyID) }
+                                .subscribe({ getActivity()?.supportFragmentManager?.popBackStack() }, RxErrorHandler.handleEmptyError())
                     }
                 }.setNegativeButton(R.string.no) { _, _ -> }
         builder.show()

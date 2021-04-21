@@ -1,32 +1,41 @@
 package com.habitrpg.android.habitica.ui.views
 
 import android.content.Context
+import android.content.res.ColorStateList
+import android.graphics.PorterDuff
+import android.os.Build
 import android.util.AttributeSet
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
+import androidx.core.widget.ImageViewCompat
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.ui.helpers.bindView
+import com.habitrpg.android.habitica.databinding.ProgressBarBinding
+import com.habitrpg.android.habitica.extensions.layoutInflater
 import com.habitrpg.android.habitica.ui.helpers.DataBindingUtils
+import kotlin.math.min
 
 
-class HabiticaProgressBar(context: Context?, attrs: AttributeSet?) : FrameLayout(context, attrs) {
-
-    private val barView: View by bindView(R.id.bar)
-    private val pendingBarView: View by bindView(R.id.pendingBar)
-    private val barEmptySpace: View by bindView(R.id.emptyBarSpace)
-    private val pendingEmptyBarSpace: View by bindView(R.id.pendingEmptyBarSpace)
+class HabiticaProgressBar(context: Context, attrs: AttributeSet?) : FrameLayout(context, attrs) {
+    val binding = ProgressBarBinding.inflate(context.layoutInflater, this)
 
     var barForegroundColor: Int = 0
     set(value) {
         field = value
-        DataBindingUtils.setRoundedBackground(barView, value)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+            DataBindingUtils.setRoundedBackground(binding.bar, value)
+        } else {
+            val bar: ImageView = findViewById(R.id.bar)
+            ImageViewCompat.setImageTintList(bar, ColorStateList.valueOf(field))
+            ImageViewCompat.setImageTintMode(bar, PorterDuff.Mode.SRC_IN)
+        }
     }
 
     var barPendingColor: Int = 0
         set(value) {
             field = value
-            DataBindingUtils.setRoundedBackground(pendingBarView, value)
+            DataBindingUtils.setRoundedBackground(binding.pendingBar, value)
         }
 
     var barBackgroundColor: Int = 0
@@ -37,22 +46,15 @@ class HabiticaProgressBar(context: Context?, attrs: AttributeSet?) : FrameLayout
         }
     }
 
-    var currentValue: Double = 0.0
-        set(value) {
-            field = value
-            updateBar()
-        }
+    private var currentValue: Double = 0.0
+    private var maxValue: Double = 0.0
 
     var pendingValue: Double = 0.0
         set(value) {
-            field = value
-            updateBar()
-        }
-
-    var maxValue: Double = 0.0
-        set(value) {
-            field = value
-            updateBar()
+            if (field != value) {
+                field = value
+                updateBar()
+            }
         }
 
     private fun updateBar() {
@@ -60,9 +62,9 @@ class HabiticaProgressBar(context: Context?, attrs: AttributeSet?) : FrameLayout
         val remainingPercent = if (remainingValue < 0) {
             0.0
         } else {
-            Math.min(1.0, remainingValue / maxValue)
+            min(1.0, remainingValue / maxValue)
         }
-        val pendingPercent = Math.min(1.0, currentValue / maxValue)
+        val pendingPercent = min(1.0, currentValue / maxValue)
         this.setBarWeight(remainingPercent)
         this.setPendingBarWeight(pendingPercent)
     }
@@ -70,7 +72,7 @@ class HabiticaProgressBar(context: Context?, attrs: AttributeSet?) : FrameLayout
     init {
         View.inflate(context, R.layout.progress_bar, this)
 
-        val attributes = context?.theme?.obtainStyledAttributes(
+        val attributes = context.theme?.obtainStyledAttributes(
                 attrs,
                 R.styleable.HabiticaProgressBar,
                 0, 0)
@@ -82,30 +84,40 @@ class HabiticaProgressBar(context: Context?, attrs: AttributeSet?) : FrameLayout
 
 
     private fun setBarWeight(percent: Double) {
-        setLayoutWeight(barView, percent)
-        setLayoutWeight(barEmptySpace, 1.0f - percent)
+        setLayoutWeight(binding.bar, percent)
+        setLayoutWeight(binding.emptyBarSpace, 1.0f - percent)
     }
     private fun setPendingBarWeight(percent: Double) {
-        setLayoutWeight(pendingBarView, percent)
-        setLayoutWeight(pendingEmptyBarSpace, 1.0f - percent)
+        setLayoutWeight(binding.pendingBar, percent)
+        setLayoutWeight(binding.pendingEmptyBarSpace, 1.0f - percent)
     }
 
 
     fun set(value: Double, valueMax: Double) {
         currentValue = value
         maxValue = valueMax
+        updateBar()
+    }
+
+    fun setCurrentValue(value: Double) {
+        currentValue = value
+        updateBar()
+    }
+
+    fun setMaxValue(value: Double) {
+        maxValue = value
+        updateBar()
     }
 
     private fun setLayoutWeight(view: View, weight: Double) {
         view.clearAnimation()
-        val layout = view.layoutParams as LinearLayout.LayoutParams
+        val layout = view.layoutParams as? LinearLayout.LayoutParams
         if (weight == 0.0 || weight == 1.0) {
-            layout.weight = weight.toFloat()
+            layout?.weight = weight.toFloat()
             view.layoutParams = layout
-        } else if (layout.weight.toDouble() != weight) {
-            val anim = DataBindingUtils.LayoutWeightAnimation(view, weight.toFloat())
-            anim.duration = 300
-            view.startAnimation(anim)
+        } else if (layout?.weight?.toDouble() != weight) {
+            layout?.weight = weight.toFloat()
+            view.layoutParams = layout
         }
     }
 }

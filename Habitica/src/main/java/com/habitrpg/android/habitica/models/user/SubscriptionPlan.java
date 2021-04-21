@@ -2,6 +2,8 @@ package com.habitrpg.android.habitica.models.user;
 
 import androidx.annotation.Nullable;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.Date;
 
 import io.realm.RealmObject;
@@ -17,7 +19,7 @@ public class SubscriptionPlan extends RealmObject {
     public static String PLANID_BASIC12MONTH = "basic_12mo";
 
     @PrimaryKey
-    private String customerId;
+    public String customerId;
     public Date dateCreated;
     public Date dateUpdated;
     @Nullable
@@ -33,6 +35,16 @@ public class SubscriptionPlan extends RealmObject {
     public SubscriptionPlanConsecutive consecutive;
 
     public int mysteryItemCount;
+    @SerializedName("owner")
+    public String ownerID;
+
+    public boolean isGroupPlanSub() {
+        return customerId.equals("group-plan");
+    }
+
+    public boolean isGiftedSub() {
+        return customerId.equals("Gift");
+    }
 
     public boolean isActive() {
         Date today = new Date();
@@ -49,7 +61,6 @@ public class SubscriptionPlan extends RealmObject {
     public int numberOfGemsLeft() {
         return totalNumberOfGems() - gemsBought;
     }
-
 
     public void setCustomerId(String customerId) {
         this.customerId = customerId;

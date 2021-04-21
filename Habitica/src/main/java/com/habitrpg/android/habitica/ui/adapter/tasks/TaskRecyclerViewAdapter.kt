@@ -3,15 +3,18 @@ package com.habitrpg.android.habitica.ui.adapter.tasks
 import com.habitrpg.android.habitica.models.responses.TaskDirection
 import com.habitrpg.android.habitica.models.tasks.ChecklistItem
 import com.habitrpg.android.habitica.models.tasks.Task
-import io.reactivex.Flowable
+import io.reactivex.rxjava3.core.Flowable
 import io.realm.OrderedRealmCollection
+import io.realm.RealmResults
 
 interface TaskRecyclerViewAdapter {
+    var canScoreTasks: Boolean
+    var data: List<Task>
     var ignoreUpdates: Boolean
 
     val errorButtonEvents: Flowable<String>
 
-    fun updateData(tasks: OrderedRealmCollection<Task>?)
+    var taskDisplayMode: String
 
     fun filter()
 
@@ -25,4 +28,5 @@ interface TaskRecyclerViewAdapter {
     val taskScoreEvents: Flowable<Pair<Task, TaskDirection>>
     val checklistItemScoreEvents: Flowable<Pair<Task, ChecklistItem>>
     val taskOpenEvents: Flowable<Task>
+    val brokenTaskEvents: Flowable<Task>
 }

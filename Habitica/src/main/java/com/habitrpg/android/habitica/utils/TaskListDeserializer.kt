@@ -71,8 +71,17 @@ class TaskListDeserializer : JsonDeserializer<TaskList> {
                     task.up = obj.get("up")?.asBoolean ?: false
                     task.down = obj.get("down")?.asBoolean ?: false
                     task.streak = obj.get("streak")?.asInt
-                    task.counterUp = obj.get("counterUp")?.asInt
-                    task.counterDown = obj.get("counterDown")?.asInt
+                    if (obj.getAsJsonObject("challenge").has("id")) {
+                        task.challengeID = obj.getAsJsonObject("challenge").get("id").asString
+
+                        if (obj.getAsJsonObject("challenge").has("broken")) {
+                            task.challengeBroken = obj.getAsJsonObject("challenge").get("broken").asString
+                        }
+                    }
+                    try {
+                        task.counterUp = obj.get("counterUp")?.asInt
+                        task.counterDown = obj.get("counterDown")?.asInt
+                    } catch (ignored: java.lang.UnsupportedOperationException) {}
                     task.dateCreated = ctx.deserialize(obj.get("createdAt"), Date::class.java)
                     task.dueDate = ctx.deserialize(obj.get("date"), Date::class.java)
                     task.startDate = ctx.deserialize(obj.get("startDate"), Date::class.java)
@@ -111,13 +120,15 @@ class TaskListDeserializer : JsonDeserializer<TaskList> {
                     }
 
                     if (obj.has("group")) {
-                        val group = TaskGroupPlan()
                         val groupObject = obj.getAsJsonObject("group")
-                        val approvalObject = groupObject.getAsJsonObject("approval")
-                        group.approvalRequested = approvalObject.getAsJsonPrimitive("requested").asBoolean
-                        group.approvalApproved = approvalObject.getAsJsonPrimitive("approved").asBoolean
-                        group.approvalRequired = approvalObject.getAsJsonPrimitive("required").asBoolean
-                        task.group = group
+                        val group: TaskGroupPlan = ctx.deserialize(groupObject, TaskGroupPlan::class.java)
+                        if (group.groupID?.isNotBlank() == true) {
+                            val approvalObject = groupObject.getAsJsonObject("approval")
+                            if (approvalObject.has("requested")) group.approvalRequested = approvalObject.getAsJsonPrimitive("requested").asBoolean
+                            if (approvalObject.has("approved")) group.approvalApproved = approvalObject.getAsJsonPrimitive("approved").asBoolean
+                            if (approvalObject.has("required")) group.approvalRequired = approvalObject.getAsJsonPrimitive("required").asBoolean
+                            task.group = group
+                        }
                     }
                     // Work around since Realm does not support Arrays of ints
                     getMonthlyDays(e, task)
@@ -127,6 +138,8 @@ class TaskListDeserializer : JsonDeserializer<TaskList> {
                     task.id?.let { taskMap[it] = task }
                 }
             } catch (ignored: ClassCastException) {
+
+            } catch (ignored: java.lang.UnsupportedOperationException) {
 
             }
         }
@@ -145,7 +158,7 @@ class TaskListDeserializer : JsonDeserializer<TaskList> {
                 try {
                     val tagId = tagElement.asString
                     for (tag in databaseTags) {
-                        if (tag.getId() == tagId) {
+                        if (tag.id == tagId) {
                             if (!alreadyContainsTag(tags, tagId)) {
                                 tags.add(tag)
                             }
@@ -164,7 +177,7 @@ class TaskListDeserializer : JsonDeserializer<TaskList> {
 
     private fun alreadyContainsTag(list: List<Tag>, idToCheck: String): Boolean {
         for (t in list) {
-            if (t.getId() == idToCheck) {
+            if (t.id == idToCheck) {
                 return true
             }
         }

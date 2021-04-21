@@ -1,9 +1,8 @@
 package com.habitrpg.android.habitica.data.implementation
 
 import android.content.Context
-import android.util.Log
-import androidx.appcompat.app.AlertDialog
 import com.amplitude.api.Amplitude
+import com.facebook.FacebookSdk.getCacheDir
 import com.google.gson.JsonSyntaxException
 import com.habitrpg.android.habitica.BuildConfig
 import com.habitrpg.android.habitica.HabiticaBaseApplication
@@ -26,29 +25,26 @@ import com.habitrpg.android.habitica.models.members.Member
 import com.habitrpg.android.habitica.models.responses.*
 import com.habitrpg.android.habitica.models.shops.Shop
 import com.habitrpg.android.habitica.models.shops.ShopItem
-import com.habitrpg.android.habitica.models.social.Challenge
-import com.habitrpg.android.habitica.models.social.ChatMessage
-import com.habitrpg.android.habitica.models.social.FindUsernameResult
-import com.habitrpg.android.habitica.models.social.Group
+import com.habitrpg.android.habitica.models.social.*
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.models.tasks.TaskList
 import com.habitrpg.android.habitica.models.user.Items
 import com.habitrpg.android.habitica.models.user.Stats
 import com.habitrpg.android.habitica.models.user.User
 import com.habitrpg.android.habitica.proxy.CrashlyticsProxy
-import io.reactivex.Flowable
-import io.reactivex.FlowableTransformer
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.functions.BiFunction
-import io.reactivex.functions.Consumer
-import io.reactivex.schedulers.Schedulers
+import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.core.FlowableTransformer
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.functions.Consumer
+import io.reactivex.rxjava3.schedulers.Schedulers
+import okhttp3.Cache
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.logging.HttpLoggingInterceptor
 import org.greenrobot.eventbus.EventBus
 import retrofit2.HttpException
 import retrofit2.Retrofit
-import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
+import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.IOException
 import java.net.SocketException
@@ -82,7 +78,6 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnError(this)
     }
-    private val displayedAlert: AlertDialog? = null
     private var languageCode: String? = null
     private var lastAPICallURL: String? = null
 
@@ -91,12 +86,11 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
 
         HabiticaBaseApplication.userComponent?.inject(this)
         crashlyticsProxy.setUserIdentifier(this.hostConfig.userID)
-        crashlyticsProxy.setUserName(this.hostConfig.userID)
         Amplitude.getInstance().userId = this.hostConfig.userID
         buildRetrofit()
     }
 
-    fun buildRetrofit() {
+    private fun buildRetrofit() {
         val logging = HttpLoggingInterceptor()
         if (BuildConfig.DEBUG) {
             logging.level = HttpLoggingInterceptor.Level.BODY
@@ -108,7 +102,12 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         val timeZone = calendar.timeZone
         val timezoneOffset = -TimeUnit.MINUTES.convert(timeZone.getOffset(calendar.timeInMillis).toLong(), TimeUnit.MILLISECONDS)
 
+        val cacheSize: Long = 10 * 1024 * 1024 // 10 MB
+
+        val cache = Cache(getCacheDir(), cacheSize)
+
         val client = OkHttpClient.Builder()
+                .cache(cache)
                 .addInterceptor(logging)
                 .addNetworkInterceptor { chain ->
                     val original = chain.request()
@@ -123,13 +122,12 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
                     if (userAgent != null) {
                         builder = builder.header("user-agent", userAgent)
                     }
-                    if (!BuildConfig.STAGING_KEY.isEmpty()) {
+                    if (BuildConfig.STAGING_KEY.isNotEmpty()) {
                         builder = builder.header("Authorization", "Basic " + BuildConfig.STAGING_KEY)
                     }
-                    val request = builder.method(original.method(), original.body())
+                    val request = builder.method(original.method, original.body)
                             .build()
-                    lastAPICallURL = original.url().toString()
-                    Log.d("NETWORK", lastAPICallURL)
+                    lastAPICallURL = original.url.toString()
                     chain.proceed(request)
                 }
                 .readTimeout(2400, TimeUnit.SECONDS)
@@ -140,7 +138,7 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         retrofitAdapter = Retrofit.Builder()
                 .client(client)
                 .baseUrl(server.toString())
-                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
                 .addConverterFactory(gsonConverter)
                 .build()
 
@@ -181,6 +179,10 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         return this.apiService.connectSocial(auth).compose(configureApiCallObserver())
     }
 
+    override fun loginApple(authToken: String): Flowable<UserAuthResponse> {
+        return apiService.loginApple(mapOf(Pair("code", authToken))).compose(configureApiCallObserver())
+    }
+
     override fun accept(throwable: Throwable) {
         val throwableClass = throwable.javaClass
         if (SocketTimeoutException::class.java.isAssignableFrom(throwableClass)) {
@@ -191,17 +193,13 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
             this.showConnectionProblemDialog(R.string.internal_error_api)
         } else if (throwableClass == SocketTimeoutException::class.java || UnknownHostException::class.java == throwableClass) {
             this.showConnectionProblemDialog(R.string.network_error_no_network_body)
-        } else if (throwableClass == retrofit2.adapter.rxjava2.HttpException::class.java) {
+        } else if (throwableClass == retrofit2.adapter.rxjava3.HttpException::class.java) {
             val error = throwable as HttpException
             val res = getErrorResponse(error)
             val status = error.code()
 
-            if (error.response().raw().request().url().toString().endsWith("/user/push-devices")) {
+            if (status == 404 || error.response()?.raw()?.request?.url?.toString()?.endsWith("/user/push-devices") == true) {
                 //workaround for an error that sometimes displays that the user already has this push device
-                return
-            }
-
-            if (status == 404) {
                 return
             }
 
@@ -224,12 +222,13 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
     }
 
     override fun getErrorResponse(throwable: HttpException): ErrorResponse {
-        val errorResponse = throwable.response().errorBody() ?: return ErrorResponse()
+        val errorResponse = throwable.response()?.errorBody() ?: return ErrorResponse()
         val errorConverter = gsonConverter
                 .responseBodyConverter(ErrorResponse::class.java, arrayOfNulls(0), retrofitAdapter)
         return try {
             errorConverter?.convert(errorResponse) as ErrorResponse
         } catch (e: IOException) {
+            crashlyticsProxy.log("Json Error: " + lastAPICallURL + ",  " + e.message)
             ErrorResponse()
         }
 
@@ -243,7 +242,7 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
             val tasksObservable = this.tasks
 
             userObservable = Flowable.zip(userObservable, tasksObservable,
-                    BiFunction { habitRPGUser, tasks ->
+                    { habitRPGUser, tasks ->
                         habitRPGUser.tasks = tasks
                         habitRPGUser
                     })
@@ -251,8 +250,12 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         return userObservable
     }
 
-    override fun retrieveInboxMessages(): Flowable<List<ChatMessage>> {
-        return apiService.inboxMessages.compose(configureApiCallObserver())
+    override fun retrieveInboxMessages(uuid: String, page: Int): Flowable<List<ChatMessage>> {
+        return apiService.getInboxMessages(uuid, page).compose(configureApiCallObserver())
+    }
+
+    override fun retrieveInboxConversations(): Flowable<List<InboxConversation>> {
+        return apiService.getInboxConversations().compose(configureApiCallObserver())
     }
 
     override fun hasAuthenticationKeys(): Boolean {
@@ -285,7 +288,6 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         this.hostConfig.userID = userID ?: ""
         this.hostConfig.apiKey = apiToken ?: ""
         crashlyticsProxy.setUserIdentifier(this.hostConfig.userID)
-        crashlyticsProxy.setUserName(this.hostConfig.userID)
         Amplitude.getInstance().userId = this.hostConfig.userID
     }
 
@@ -323,12 +325,20 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         return apiService.equipItem(type, itemKey).compose(configureApiCallObserver())
     }
 
-    override fun buyItem(itemKey: String): Flowable<BuyResponse> {
-        return apiService.buyItem(itemKey).compose(configureApiCallObserver())
+    override fun buyItem(itemKey: String, purchaseQuantity: Int): Flowable<BuyResponse> {
+        return apiService.buyItem(itemKey, mapOf(Pair("quantity", purchaseQuantity))).compose(configureApiCallObserver())
     }
 
-    override fun purchaseItem(type: String, itemKey: String): Flowable<Any> {
-        return apiService.purchaseItem(type, itemKey).compose(configureApiCallObserver())
+    override fun unlinkAllTasks(challengeID: String?, keepOption: String): Flowable<Void> {
+        return apiService.unlinkAllTasks(challengeID, keepOption).compose(configureApiCallObserver())
+    }
+
+    override fun blockMember(userID: String): Flowable<List<String>> {
+        return apiService.blockMember(userID).compose(configureApiCallObserver())
+    }
+
+    override fun purchaseItem(type: String, itemKey: String, purchaseQuantity: Int): Flowable<Void> {
+        return apiService.purchaseItem(type, itemKey, mapOf(Pair("quantity", purchaseQuantity))).compose(configureApiCallObserver())
     }
 
     override fun validateSubscription(request: SubscriptionValidationRequest): Flowable<Any> {
@@ -349,16 +359,24 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         }
     }
 
-    override fun purchaseHourglassItem(type: String, itemKey: String): Flowable<Any> {
+    override fun cancelSubscription(): Flowable<Void> {
+        return apiService.cancelSubscription().compose(configureApiCallObserver())
+    }
+
+    override fun purchaseHourglassItem(type: String, itemKey: String): Flowable<Void> {
         return apiService.purchaseHourglassItem(type, itemKey).compose(configureApiCallObserver())
     }
 
-    override fun purchaseMysterySet(itemKey: String): Flowable<Any> {
+    override fun purchaseMysterySet(itemKey: String): Flowable<Void> {
         return apiService.purchaseMysterySet(itemKey).compose(configureApiCallObserver())
     }
 
-    override fun purchaseQuest(key: String): Flowable<Any> {
+    override fun purchaseQuest(key: String): Flowable<Void> {
         return apiService.purchaseQuest(key).compose(configureApiCallObserver())
+    }
+
+    override fun purchaseSpecialSpell(key: String): Flowable<Void> {
+        return apiService.purchaseSpecialSpell(key).compose(configureApiCallObserver())
     }
 
     override fun sellItem(itemType: String, itemKey: String): Flowable<User> {
@@ -366,7 +384,12 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
     }
 
     override fun feedPet(petKey: String, foodKey: String): Flowable<FeedResponse> {
-        return apiService.feedPet(petKey, foodKey).compose(configureApiCallObserver())
+        return apiService.feedPet(petKey, foodKey)
+                .map {
+                    it.data.message = it.message
+                    it
+                }
+                .compose(configureApiCallObserver())
     }
 
     override fun hatchPet(eggKey: String, hatchingPotionKey: String): Flowable<Items> {
@@ -396,6 +419,10 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
 
     override fun postTaskDirection(id: String, direction: String): Flowable<TaskDirectionData> {
         return apiService.postTaskDirection(id, direction).compose(configureApiCallObserver())
+    }
+
+    override fun bulkScoreTasks(data: List<Map<String, String>>): Flowable<BulkTaskScoringData> {
+        return apiService.bulkScoreTasks(data).compose(configureApiCallObserver())
     }
 
     override fun postTaskNewPosition(id: String, position: Int): Flowable<List<String>> {
@@ -482,8 +509,12 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         return apiService.createGroup(group).compose(configureApiCallObserver())
     }
 
-    override fun updateGroup(id: String, item: Group): Flowable<Void> {
+    override fun updateGroup(id: String, item: Group): Flowable<Group> {
         return apiService.updateGroup(id, item).compose(configureApiCallObserver())
+    }
+
+    override fun removeMemberFromGroup(groupID: String, userID: String): Flowable<Void> {
+        return apiService.removeMemberFromGroup(groupID, userID).compose(configureApiCallObserver())
     }
 
     override fun listGroupChat(groupId: String): Flowable<List<ChatMessage>> {
@@ -494,8 +525,8 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         return apiService.joinGroup(groupId).compose(configureApiCallObserver())
     }
 
-    override fun leaveGroup(groupId: String): Flowable<Void> {
-        return apiService.leaveGroup(groupId).compose(configureApiCallObserver())
+    override fun leaveGroup(groupId: String, keepChallenges: String): Flowable<Void> {
+        return apiService.leaveGroup(groupId, keepChallenges).compose(configureApiCallObserver())
     }
 
     override fun postGroupChat(groupId: String, message: Map<String, String>): Flowable<PostChatMessageResult> {
@@ -525,11 +556,15 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         return apiService.flagMessage(groupId, mid, data).compose(configureApiCallObserver())
     }
 
+    override fun flagInboxMessage(mid: String, data: MutableMap<String, String>): Flowable<Void> {
+        return apiService.flagInboxMessage(mid, data).compose(configureApiCallObserver())
+    }
+
     override fun seenMessages(groupId: String): Flowable<Void> {
         return apiService.seenMessages(groupId).compose(configureApiCallObserver())
     }
 
-    override fun inviteToGroup(groupId: String, inviteData: Map<String, Any>): Flowable<List<String>> {
+    override fun inviteToGroup(groupId: String, inviteData: Map<String, Any>): Flowable<Void> {
         return apiService.inviteToGroup(groupId, inviteData).compose(configureApiCallObserver())
     }
 
@@ -648,7 +683,7 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
     }
 
     override fun updateChallenge(challenge: Challenge): Flowable<Challenge> {
-        return apiService.updateChallenge(challenge.id, challenge).compose(configureApiCallObserver())
+        return apiService.updateChallenge(challenge.id ?: "", challenge).compose(configureApiCallObserver())
     }
 
     override fun deleteChallenge(challengeId: String): Flowable<Void> {
@@ -659,15 +694,15 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         return apiService.debugAddTenGems().compose(configureApiCallObserver())
     }
 
-    override fun readNotification(notificationId: String): Flowable<List<*>> {
+    override fun readNotification(notificationId: String): Flowable<List<Any>> {
         return apiService.readNotification(notificationId).compose(configureApiCallObserver())
     }
 
-    override fun readNotifications(notificationIds: Map<String, List<String>>): Flowable<List<*>> {
+    override fun readNotifications(notificationIds: Map<String, List<String>>): Flowable<List<Any>> {
         return apiService.readNotifications(notificationIds).compose(configureApiCallObserver())
     }
 
-    override fun seeNotifications(notificationIds: Map<String, List<String>>): Flowable<List<*>> {
+    override fun seeNotifications(notificationIds: Map<String, List<String>>): Flowable<List<Any>> {
         return apiService.seeNotifications(notificationIds).compose(configureApiCallObserver())
     }
 
@@ -680,6 +715,11 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
 
     override fun runCron(): Flowable<Void> {
         return apiService.runCron().compose(configureApiCallObserver())
+    }
+
+
+    override fun reroll(): Flowable<User> {
+        return apiService.reroll().compose(configureApiCallObserver())
     }
 
     override fun resetAccount(): Flowable<Void> {
@@ -740,6 +780,18 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         return apiService.allocatePoint(stat).compose(configureApiCallObserver())
     }
 
+    override fun transferGems(giftedID: String, amount: Int): Flowable<Void> {
+        return apiService.transferGems(mapOf(Pair("toUserId", giftedID), Pair("gemAmount", amount))).compose(configureApiCallObserver())
+    }
+
+    override fun getTeamPlans(): Flowable<List<TeamPlan>> {
+        return apiService.getTeamPlans().compose(configureApiCallObserver())
+    }
+
+    override fun getTeamPlanTasks(teamID: String): Flowable<TaskList> {
+        return apiService.getTeamPlanTasks(teamID).compose(configureApiCallObserver())
+    }
+
     override fun bulkAllocatePoints(strength: Int, intelligence: Int, constitution: Int, perception: Int): Flowable<Stats> {
         val body = HashMap<String, Map<String, Int>>()
         val stats = HashMap<String, Int>()
@@ -759,8 +811,6 @@ class ApiClientImpl//private OnHabitsAPIResult mResultListener;
         get() = apiService.worldState.compose(configureApiCallObserver())
 
     companion object {
-        private const val TAG = "ApiClientImpl"
-
         fun createGsonFactory(): GsonConverterFactory {
             return GSonFactoryCreator.create()
         }

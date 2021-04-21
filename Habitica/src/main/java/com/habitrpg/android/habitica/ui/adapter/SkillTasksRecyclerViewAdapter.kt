@@ -3,29 +3,25 @@ package com.habitrpg.android.habitica.ui.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.habitrpg.android.habitica.R
+import com.habitrpg.android.habitica.databinding.SkillTaskItemCardBinding
 import com.habitrpg.android.habitica.models.tasks.Task
-import com.habitrpg.android.habitica.ui.helpers.bindView
-import com.habitrpg.android.habitica.ui.views.HabiticaEmojiTextView
-import io.reactivex.BackpressureStrategy
-import io.reactivex.Flowable
-import io.reactivex.subjects.PublishSubject
-import io.realm.OrderedRealmCollection
-import io.realm.RealmRecyclerViewAdapter
+import io.reactivex.rxjava3.core.BackpressureStrategy
+import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.subjects.PublishSubject
 import java.util.*
 
 
-class SkillTasksRecyclerViewAdapter(data: OrderedRealmCollection<Task>?, autoUpdate: Boolean) : RealmRecyclerViewAdapter<Task, SkillTasksRecyclerViewAdapter.TaskViewHolder>(data, autoUpdate) {
+class SkillTasksRecyclerViewAdapter : BaseRecyclerViewAdapter<Task, SkillTasksRecyclerViewAdapter.TaskViewHolder>() {
 
     private val taskSelectionEvents = PublishSubject.create<Task>()
 
     override fun getItemId(position: Int): Long {
-        if (data != null) {
-            val task = data!![position]
-            if (task.id != null && task.id!!.length == 36) {
-                return UUID.fromString(task.id).mostSignificantBits
-            }
+        val task = getItem(position)
+        if (task?.id?.length == 36) {
+            return UUID.fromString(task.id).mostSignificantBits
         }
         return UUID.randomUUID().mostSignificantBits
     }
@@ -37,9 +33,7 @@ class SkillTasksRecyclerViewAdapter(data: OrderedRealmCollection<Task>?, autoUpd
     }
 
     override fun onBindViewHolder(holder: TaskViewHolder, position: Int) {
-        data?.let {
-            holder.bindHolder(it[position])
-        }
+        holder.bindHolder(data[position])
     }
 
     fun getTaskSelectionEvents(): Flowable<Task> {
@@ -47,12 +41,8 @@ class SkillTasksRecyclerViewAdapter(data: OrderedRealmCollection<Task>?, autoUpd
     }
 
     inner class TaskViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView), View.OnClickListener {
-
+        private val binding = SkillTaskItemCardBinding.bind(itemView)
         var task: Task? = null
-
-        private val titleTextView: HabiticaEmojiTextView by bindView(R.id.titleTextView)
-        private val notesTextView: HabiticaEmojiTextView by bindView(R.id.notesTextView)
-        private val rightBorderView: View by bindView(R.id.rightBorderView)
 
         init {
             itemView.setOnClickListener(this)
@@ -61,14 +51,14 @@ class SkillTasksRecyclerViewAdapter(data: OrderedRealmCollection<Task>?, autoUpd
 
         internal fun bindHolder(task: Task) {
             this.task = task
-            titleTextView.text = task.markdownText { titleTextView.text = it }
+            binding.titleTextView.text = task.markdownText { binding.titleTextView.text = it }
             if (task.notes?.isEmpty() == true) {
-                notesTextView.visibility = View.GONE
+                binding.notesTextView.visibility = View.GONE
             } else {
-                notesTextView.visibility = View.VISIBLE
-                notesTextView.text = task.markdownNotes { notesTextView.text = it }
+                binding.notesTextView.visibility = View.VISIBLE
+                binding.notesTextView.text = task.markdownNotes { binding.notesTextView.text = it }
             }
-            rightBorderView.setBackgroundResource(task.lightTaskColor)
+            binding.rightBorderView.setBackgroundColor(ContextCompat.getColor(itemView.context, task.lightTaskColor))
         }
 
         override fun onClick(v: View) {

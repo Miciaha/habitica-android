@@ -1,35 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="task_difficulties">
-        <item>@string/trivial</item>
-        <item>@string/easy</item>
-        <item>@string/medium</item>
-        <item>@string/hard</item>
-    </string-array>
-
-    <string-array name="task_attributes">
-        <item>@string/physical</item>
-        <item>@string/mental</item>
-        <item>@string/social</item>
-        <item>@string/other</item>
-    </string-array>
-
-    <string-array name="task_reset_frequencies">
-        <item>@string/repeatables_frequency_daily</item>
-        <item>@string/repeatables_frequency_weekly</item>
-        <item>@string/repeatables_frequency_monthly</item>
-    </string-array>
 
     <string-array name="repeatables_frequencies">
         <item>@string/repeatables_frequency_daily</item>
         <item>@string/repeatables_frequency_weekly</item>
         <item>@string/repeatables_frequency_monthly</item>
         <item>@string/repeatables_frequency_yearly</item>
-    </string-array>
-
-    <string-array name="repeatables_on">
-        <item>@string/repeatables_frequency_day_of_month</item>
-        <item>@string/repeatables_frequency_day_of_week</item>
     </string-array>
 
     <string-array name="weekdays">
@@ -55,6 +31,18 @@
     <string-array name="avatar_sizes">
         <item>@string/avatar_size_slim</item>
         <item>@string/avatar_size_broad</item>
+    </string-array>
+
+    <string-array name="TaskDisplayTypes">
+        <item>Standard</item>
+        <item>Compact</item>
+        <item>Minimal</item>
+    </string-array>
+
+    <string-array name="TaskDisplayValues">
+        <item>standard</item>
+        <item>compact</item>
+        <item>minimal</item>
     </string-array>
 
     <string-array name="Language">
@@ -113,6 +101,14 @@
         <item>Rosstavo\'s Theme</item>
         <item>Dewin\'s Theme</item>
         <item>Airu\'s Theme</item>
+        <item>Beatscribe\'s NES Theme</item>
+        <item>Arashi\'s Theme</item>
+        <item>Triumph Theme</item>
+        <item>Lunasol Theme</item>
+        <item>SpacePenguin\'s Theme</item>
+        <item>MAFL Theme</item>
+        <item>Pizilden\'s Theme</item>
+        <item>Farvoid Theme</item>
     </string-array>
 
     <string-array name="AudioValues">
@@ -124,6 +120,64 @@
         <item>rosstavoTheme</item>
         <item>dewinTheme</item>
         <item>airuTheme</item>
+        <item>beatscribeNesTheme</item>
+        <item>arashiTheme</item>
+        <item>triumphTheme</item>
+        <item>lunasolTheme</item>
+        <item>spacePenguinTheme</item>
+        <item>maflTheme</item>
+        <item>pizildenTheme</item>
+        <item>farvoidTheme</item>
+    </string-array>
+
+
+    <string-array name="AppThemes">
+        <item>Default</item>
+        <item>Maroon</item>
+        <item>Red</item>
+        <item>Orange</item>
+        <item>Green</item>
+        <item>Teal</item>
+        <item>Blue</item>
+    </string-array>
+
+    <string-array name="AppThemeValues">
+        <item>purple</item>
+        <item>maroon</item>
+        <item>red</item>
+        <item>orange</item>
+        <item>green</item>
+        <item>teal</item>
+        <item>blue</item>
+    </string-array>
+
+    <string-array name="AppThemeModes">
+        <item>Follow System</item>
+        <item>Always Light</item>
+        <item>Always Dark</item>
+    </string-array>
+
+    <string-array name="AppThemeModeValues">
+        <item>system</item>
+        <item>light</item>
+        <item>dark</item>
+    </string-array>
+
+
+    <string-array name="launch_screen_types">
+        <item>@string/habits</item>
+        <item>@string/dailies</item>
+        <item>@string/todos</item>
+        <item>@string/rewards</item>
+        <item>@string/party</item>
+    </string-array>
+
+    <string-array name="launch_screen_values">
+        <item>/user/tasks/habits</item>
+        <item>/user/tasks/dailies</item>
+        <item>/user/tasks/todos</item>
+        <item>/user/tasks/rewards</item>
+        <item>/party</item>
     </string-array>
 
     <string-array name="server_urls">
@@ -134,5 +188,4 @@
         <item>https://habitrpg-delta.herokuapp.com</item>
     </string-array>
 
-    <string name="frequency_monthly">Monthly</string>
 </resources>

@@ -1,45 +1,55 @@
 package com.habitrpg.android.habitica.ui.fragments.social
 
 import android.os.Bundle
+import android.view.*
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentPagerAdapter
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import androidx.lifecycle.ViewModelProvider
 import com.habitrpg.android.habitica.R
 import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.SocialRepository
+import com.habitrpg.android.habitica.databinding.FragmentViewpagerBinding
 import com.habitrpg.android.habitica.models.social.Group
 import com.habitrpg.android.habitica.ui.fragments.BaseMainFragment
-import kotlinx.android.synthetic.main.fragment_viewpager.*
+import com.habitrpg.android.habitica.ui.viewmodels.GroupViewModel
+import com.habitrpg.android.habitica.ui.viewmodels.GroupViewType
 import javax.inject.Inject
 
-class TavernFragment : BaseMainFragment() {
+class TavernFragment : BaseMainFragment<FragmentViewpagerBinding>() {
 
     @Inject
     lateinit var socialRepository: SocialRepository
 
-    internal var tavern: Group? = null
+    override var binding: FragmentViewpagerBinding? = null
+
+    override fun createBinding(inflater: LayoutInflater, container: ViewGroup?): FragmentViewpagerBinding {
+        return FragmentViewpagerBinding.inflate(inflater, container, false)
+    }
+
+    internal lateinit var viewModel: GroupViewModel
 
     internal var tavernDetailFragment = TavernDetailFragment()
-    internal var chatListFragment = ChatListFragment()
+    private var chatFragment: ChatFragment? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         this.usesTabLayout = true
         this.hidesToolbar = true
-        super.onCreateView(inflater, container, savedInstanceState)
-        val v = inflater.inflate(R.layout.fragment_viewpager, container, false)
         this.tutorialStepIdentifier = "tavern"
         this.tutorialText = getString(R.string.tutorial_tavern)
 
-        return v
+        return super.onCreateView(inflater, container, savedInstanceState)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        viewModel = ViewModelProvider(this).get(GroupViewModel::class.java)
+        viewModel.groupViewType = GroupViewType.GUILD
+        viewModel.setGroupID(Group.TAVERN_ID)
+
         setViewPagerAdapter()
-        viewPager.currentItem = 0
+        binding?.viewPager?.currentItem = 0
     }
 
     override fun onDestroy() {
@@ -51,28 +61,41 @@ class TavernFragment : BaseMainFragment() {
         component.inject(this)
     }
 
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        inflater.inflate(R.menu.menu_tavern, menu)
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
+    @Suppress("ReturnCount")
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.menu_guild_refresh -> {
+                viewModel.retrieveGroup {  }
+                return true
+            }
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
     private fun setViewPagerAdapter() {
         val fragmentManager = childFragmentManager
-        if (this.user == null) {
-            return
-        }
-
-        viewPager.adapter = object : FragmentPagerAdapter(fragmentManager) {
+        binding?.viewPager?.adapter = object : FragmentPagerAdapter(fragmentManager, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
             override fun getItem(position: Int): Fragment {
                 return when (position) {
                     0 -> {
                         tavernDetailFragment
                     }
                     1 -> {
-                        chatListFragment.configure(Group.TAVERN_ID, user, true, "tavern")
-                        chatListFragment
+                        chatFragment = ChatFragment()
+                        chatFragment?.viewModel = viewModel
+                        chatFragment ?: Fragment()
                     }
                     else -> Fragment()
                 }
             }
 
             override fun getCount(): Int {
-                return if (tavern != null && tavern?.quest != null && tavern?.quest?.key != null) {
+                return if (viewModel.getGroupData().value?.quest?.active == true) {
                     3
                 } else 2
             }
@@ -86,7 +109,7 @@ class TavernFragment : BaseMainFragment() {
                 }
             }
         }
-        tabLayout?.setupWithViewPager(viewPager)
+        tabLayout?.setupWithViewPager(binding?.viewPager)
     }
 
 }

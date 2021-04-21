@@ -1,28 +1,31 @@
 package com.habitrpg.android.habitica.ui.viewHolders
 
 import android.content.Context
-import androidx.recyclerview.widget.RecyclerView
 import android.view.View
+import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.Button
 import android.widget.Spinner
 import android.widget.TextView
+import androidx.recyclerview.widget.RecyclerView
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.ui.helpers.bindView
+import com.habitrpg.android.habitica.extensions.inflate
+import com.habitrpg.android.habitica.models.inventory.StableSection
 
 class SectionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
 
-    private val label: TextView by bindView(itemView, R.id.label)
-    private val purchaseSetButton: Button? by bindView(itemView, R.id.purchaseSetButton)
-    private val selectionSpinner: Spinner? by bindView(itemView, R.id.classSelectionSpinner)
-    internal val notesView: TextView? by bindView(itemView, R.id.headerNotesView)
+    private val label: TextView = itemView.findViewById(R.id.label)
+    private val selectionSpinner: Spinner? = itemView.findViewById(R.id.classSelectionSpinner)
+    internal val notesView: TextView? = itemView.findViewById(R.id.headerNotesView)
+    private val countPill: TextView? = itemView.findViewById(R.id.count_pill)
     var context: Context = itemView.context
 
     var spinnerSelectionChanged: (() -> Unit)? = null
 
+    constructor(parent: ViewGroup) : this(parent.inflate(R.layout.customization_section_header))
+
     init {
-        this.purchaseSetButton?.visibility = View.GONE
+        itemView.findViewById<View?>(R.id.purchaseSetButton)?.visibility = View.GONE
         selectionSpinner?.onItemSelectedListener = object: AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: AdapterView<*>?) {
                 spinnerSelectionChanged?.invoke()
@@ -32,7 +35,6 @@ class SectionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
                 spinnerSelectionChanged?.invoke()
             }
         }
-
     }
 
     fun bind(title: String) {
@@ -42,6 +44,16 @@ class SectionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         } catch (e: Exception) {
             this.label.text = title
         }
+    }
+
+    fun bind(section: StableSection) {
+        label.text = section.text
+        if (section.key == "special") {
+            countPill?.visibility = View.GONE
+        } else {
+            countPill?.visibility = View.VISIBLE
+        }
+        countPill?.text = itemView.context.getString(R.string.pet_ownership_fraction, section.ownedCount, section.totalCount)
     }
 
     var spinnerAdapter: ArrayAdapter<CharSequence>? = null

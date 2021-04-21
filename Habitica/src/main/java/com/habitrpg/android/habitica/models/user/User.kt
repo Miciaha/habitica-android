@@ -1,10 +1,8 @@
 package com.habitrpg.android.habitica.models.user
 
 import com.google.gson.annotations.SerializedName
-import com.habitrpg.android.habitica.models.Avatar
-import com.habitrpg.android.habitica.models.PushDevice
-import com.habitrpg.android.habitica.models.QuestAchievement
-import com.habitrpg.android.habitica.models.Tag
+import com.habitrpg.android.habitica.R
+import com.habitrpg.android.habitica.models.*
 import com.habitrpg.android.habitica.models.invitations.Invitations
 import com.habitrpg.android.habitica.models.social.ChallengeMembership
 import com.habitrpg.android.habitica.models.social.UserParty
@@ -16,8 +14,15 @@ import io.realm.annotations.Ignore
 import io.realm.annotations.PrimaryKey
 import java.util.*
 
-open class User : RealmObject(), Avatar {
+open class User : RealmObject(), BaseObject, Avatar, VersionedObject {
 
+    override val realmClass: Class<User>
+        get() = User::class.java
+    override val primaryIdentifier: String?
+        get() = id
+    override val primaryIdentifierName: String
+        get() = "id"
+    
     @Ignore
     var tasks: TaskList? = null
 
@@ -56,9 +61,22 @@ open class User : RealmObject(), Avatar {
             for (test in abTests ?: emptyList<ABTest>()) {
                 test.userID = id
             }
+            for (achievement in achievements) {
+                achievement.userId = id
+            }
         }
+
+    @SerializedName("_v")
+    override var versionNumber: Int = 0
+
     var balance: Double = 0.toDouble()
-    private var stats: Stats? = null
+    override var stats: Stats? = null
+        set(value) {
+            field = value
+            if (value != null && this.id != null && !value.isManaged) {
+                field?.userId = this.id
+            }
+        }
     var inbox: Inbox? = null
         set(inbox) {
             field = inbox
@@ -66,7 +84,13 @@ open class User : RealmObject(), Avatar {
                 inbox.userId = this.id
             }
         }
-    private var preferences: Preferences? = null
+    override var preferences: Preferences? = null
+    set(value) {
+        field = value
+        if (value != null && this.id != null && !value.isManaged) {
+            field?.userId = this.id
+        }
+    }
     var profile: Profile? = null
         set(profile) {
             field = profile
@@ -110,6 +134,13 @@ open class User : RealmObject(), Avatar {
                 contributor.userId = this.id
             }
         }
+    var backer: Backer? = null
+        set(backer) {
+            field = backer
+            if (backer != null && this.id != null && !backer.isManaged) {
+                backer.id = this.id
+            }
+        }
     var invitations: Invitations? = null
         set(invitations) {
             field = invitations
@@ -119,11 +150,13 @@ open class User : RealmObject(), Avatar {
         }
 
     var tags = RealmList<Tag>()
+    var achievements = RealmList<UserAchievement>()
     var questAchievements = RealmList<QuestAchievement>()
         set(value) {
             field = value
             field.forEach { it.userID = id }
         }
+    var challengeAchievements = RealmList<String>()
 
     @Ignore
     var pushDevices: List<PushDevice>? = null
@@ -155,69 +188,75 @@ open class User : RealmObject(), Avatar {
         get() = this.items?.mounts?.size ?: 0
 
     val contributorColor: Int
-        get() = this.contributor?.contributorColor ?: android.R.color.black
+        get() = this.contributor?.contributorColor ?: R.color.text_primary
     val username: String?
     get() = authentication?.localAuthentication?.username
     val formattedUsername: String?
         get() = if (username != null) "@$username" else null
 
-    override fun getPreferences(): Preferences? {
-        return preferences
-    }
+    override val gemCount: Int
+        get() = (this.balance * 4).toInt()
 
-    fun setPreferences(preferences: Preferences?) {
-        this.preferences = preferences
-        if (preferences != null && this.id != null && !preferences.isManaged) {
-            preferences.userId = this.id
-        }
-    }
+    override val hourglassCount: Int
+        get() = purchased?.plan?.consecutive?.trinkets ?: 0
 
-    override fun getStats(): Stats? {
-        return stats
-    }
+    override val costume: Outfit?
+        get() = items?.gear?.costume
 
-    fun setStats(stats: Stats?) {
-        this.stats = stats
-        if (stats != null && this.id != null && !stats.isManaged) {
-            stats.userId = this.id
-        }
-    }
-
-    override fun getGemCount(): Int {
-        return (this.balance * 4).toInt()
-    }
-
-    override fun getHourglassCount(): Int? {
-        return if (purchased != null) {
-            purchased?.plan?.consecutive?.trinkets
-        } else 0
-    }
-
-    override fun getCostume(): Outfit? {
-        return items?.gear?.costume
-    }
-
-    override fun getEquipped(): Outfit? {
-        return items?.gear?.equipped
-    }
+    override val equipped: Outfit?
+        get() = items?.gear?.equipped
 
     override fun hasClass(): Boolean {
         return preferences?.disableClasses != true && flags?.classSelected == true && stats?.habitClass?.isNotEmpty() == true
     }
 
-    override fun getCurrentMount(): String? {
-        return items?.currentMount ?: ""
-    }
+    override val currentMount: String?
+        get() = items?.currentMount ?: ""
+    override val currentPet: String?
+        get() = items?.currentPet ?: ""
 
-    override fun getCurrentPet(): String? {
-        return items?.currentPet ?: ""
-    }
-
-    override fun getSleep(): Boolean {
-        return getPreferences() != null && getPreferences()!!.sleep
-    }
+    override val sleep: Boolean
+        get() = preferences?.sleep ?: false
 
     fun hasParty(): Boolean {
         return this.party?.id?.length ?: 0 > 0
+    }
+
+    val isSubscribed: Boolean
+        get() {
+            val plan = purchased?.plan
+            var isSubscribed = false
+            if (plan != null) {
+                if (plan.isActive) {
+                    isSubscribed = true
+                }
+            }
+            return isSubscribed
+        }
+
+    val onboardingAchievements: List<UserAchievement>
+        get() {
+            val onboarding = mutableMapOf<String, UserAchievement>()
+            for (key in ONBOARDING_ACHIEVEMENT_KEYS) {
+                val achievement = UserAchievement()
+                achievement.key = key
+                onboarding[key] = achievement
+            }
+            for (achievement in achievements) {
+                if (achievement.key in ONBOARDING_ACHIEVEMENT_KEYS) {
+                    onboarding[achievement.key ?: ""] = achievement
+                }
+            }
+            return onboarding.values.toList()
+        }
+
+    val hasCompletedOnboarding: Boolean
+        get() {
+            val onboarding = onboardingAchievements
+            return onboarding.count { it.earned } == onboarding.size
+        }
+
+    companion object {
+        val ONBOARDING_ACHIEVEMENT_KEYS = listOf("createdTask", "completedTask", "hatchedPet", "fedPet", "purchasedEquipment")
     }
 }

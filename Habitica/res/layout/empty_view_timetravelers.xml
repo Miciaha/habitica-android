@@ -13,12 +13,12 @@
         android:text="@string/subscribe_for_hourglasses"
         android:textSize="18sp"
         android:gravity="center"
-        android:textColor="@color/gray_200"/>
+        android:textColor="@color/text_ternary"/>
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/timetravelers_closed_description"
-        android:textColor="@color/gray_300"
+        android:textColor="@color/text_quad"
         android:layout_marginTop="12dp"
         android:gravity="center"
         android:textSize="14sp"/>
@@ -27,7 +27,7 @@
         android:layout_width="match_parent"
         android:layout_height="38dp"
         android:text="@string/want_to_subscribe"
-        android:textColor="@color/brand_400"
+        android:textColor="?colorAccent"
         android:background="@drawable/layout_rounded_bg_lighter_gray"
         android:layout_marginTop="18dp"/>
 </LinearLayout>

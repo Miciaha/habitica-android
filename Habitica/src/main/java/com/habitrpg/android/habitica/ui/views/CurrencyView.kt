@@ -9,9 +9,11 @@ import android.view.Gravity
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.habitrpg.android.habitica.R
+import com.habitrpg.android.habitica.extensions.isUsingNightModeResources
 import com.habitrpg.android.habitica.helpers.NumberAbbreviator
 
 class CurrencyView : androidx.appcompat.widget.AppCompatTextView {
+    var hideWhenEmpty: Boolean = false
     var lightBackground: Boolean = false
         set(value) {
             field = value
@@ -20,19 +22,22 @@ class CurrencyView : androidx.appcompat.widget.AppCompatTextView {
     var currency: String? = null
         set(currency) {
             field = currency
+            setCurrencyContentDescriptionFromCurrency(currency)
             configureCurrency()
             updateVisibility()
         }
+    private var currencyContentDescription: String? = null
 
     constructor(context: Context, attrs: AttributeSet?) : super(context, attrs) {
         val attributes = context.theme?.obtainStyledAttributes(
                 attrs,
                 R.styleable.CurrencyViews,
                 0, 0)
+        val fallBackLight = !context.isUsingNightModeResources()
         lightBackground = try {
-            attributes?.getBoolean(R.styleable.CurrencyView_hasLightBackground, true) ?: true
+            attributes?.getBoolean(R.styleable.CurrencyView_hasLightBackground, fallBackLight) ?: fallBackLight
         } catch (_: ArrayIndexOutOfBoundsException) {
-            true
+            !context.isUsingNightModeResources()
         }
         visibility = GONE
     }
@@ -40,14 +45,24 @@ class CurrencyView : androidx.appcompat.widget.AppCompatTextView {
     constructor(context: Context, currency: String, lightbackground: Boolean) : super(context) {
         this.lightBackground = lightbackground
         this.currency = currency
+        setCurrencyContentDescriptionFromCurrency(currency)
         visibility = GONE
+    }
+
+    private fun setCurrencyContentDescriptionFromCurrency(currency: String?) {
+        when (currency) {
+            "gold" -> this.currencyContentDescription = context.getString(R.string.gold_plural)
+            "gems" -> this.currencyContentDescription = context.getString(R.string.gems)
+            "hourglasses" -> this.currencyContentDescription = context.getString(R.string.mystic_hourglasses)
+            else -> this.currencyContentDescription = ""
+        }
     }
 
     private fun configureCurrency() {
         if ("gold" == currency) {
             icon = HabiticaIconsHelper.imageOfGold()
             if (lightBackground) {
-                setTextColor(ContextCompat.getColor(context, R.color.yellow_5))
+                setTextColor(ContextCompat.getColor(context, R.color.yellow_1))
             } else {
                 setTextColor(ContextCompat.getColor(context, R.color.yellow_100))
             }
@@ -66,6 +81,7 @@ class CurrencyView : androidx.appcompat.widget.AppCompatTextView {
                 setTextColor(ContextCompat.getColor(context, R.color.brand_500))
             }
         }
+        hideWhenEmpty = "hourglasses" == currency
     }
 
     private var drawable: BitmapDrawable? = null
@@ -87,36 +103,28 @@ class CurrencyView : androidx.appcompat.widget.AppCompatTextView {
     var value = 0.0
     set(value) {
         field = value
-        text = NumberAbbreviator.abbreviate(context, value)
+        val abbreviatedValue = NumberAbbreviator.abbreviate(context, value)
+        text = abbreviatedValue
+        contentDescription = "$abbreviatedValue $currencyContentDescription"
         updateVisibility()
     }
 
     var isLocked = false
     set(value) {
-        field = value
-        if (isLocked) {
-            this.setTextColor(ContextCompat.getColor(context, R.color.gray_300))
-            drawable?.alpha = 127
-        } else {
-            drawable?.alpha = 255
+        if (field != value) {
+            field = value
+            if (isLocked) {
+                this.setTextColor(ContextCompat.getColor(context, R.color.text_quad))
+                drawable?.alpha = 127
+            } else {
+                drawable?.alpha = 255
+            }
+            this.setCompoundDrawablesWithIntrinsicBounds(drawable, null, null, null)
         }
-        this.setCompoundDrawablesWithIntrinsicBounds(drawable, null, null, null)
-    }
-
-    var cantAfford = false
-    set(value) {
-        field = value
-        if (value) {
-            this.setTextColor(ContextCompat.getColor(context, R.color.red_50))
-            drawable?.alpha = 127
-        } else {
-            drawable?.alpha = 255
-        }
-        this.setCompoundDrawablesWithIntrinsicBounds(drawable, null, null, null)
     }
 
     private fun updateVisibility() {
-        visibility = if ("hourglasses" == this.currency) {
+        visibility = if (hideWhenEmpty) {
             if ("0" == text) View.GONE else View.VISIBLE
         } else {
             View.VISIBLE

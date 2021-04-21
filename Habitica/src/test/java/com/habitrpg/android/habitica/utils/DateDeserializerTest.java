@@ -6,13 +6,8 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 
-import com.habitrpg.android.habitica.BuildConfig;
-
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
 
 import java.lang.reflect.Type;
 import java.util.Date;
@@ -21,8 +16,6 @@ import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
-@Config(constants = BuildConfig.class)
-@RunWith(RobolectricTestRunner.class)
 public class DateDeserializerTest {
     DateDeserializer deserializer;
     JsonDeserializationContext deserializationContext;

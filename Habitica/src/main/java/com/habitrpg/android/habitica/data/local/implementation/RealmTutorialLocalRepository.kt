@@ -2,7 +2,8 @@ package com.habitrpg.android.habitica.data.local.implementation
 
 import com.habitrpg.android.habitica.data.local.TutorialLocalRepository
 import com.habitrpg.android.habitica.models.TutorialStep
-import io.reactivex.Flowable
+import hu.akarnokd.rxjava3.bridge.RxJavaBridge
+import io.reactivex.rxjava3.core.Flowable
 import io.realm.Realm
 import io.realm.RealmResults
 
@@ -10,8 +11,9 @@ import io.realm.RealmResults
 class RealmTutorialLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm), TutorialLocalRepository {
 
     override fun getTutorialStep(key: String): Flowable<TutorialStep> {
-        return realm.where(TutorialStep::class.java).equalTo("identifier", key)
-                .findAllAsync()
+        if (realm.isClosed) return Flowable.empty()
+        return RxJavaBridge.toV3Flowable(realm.where(TutorialStep::class.java).equalTo("identifier", key)
+                .findAll()
                 .asFlowable()
                 .filter { realmObject -> realmObject.isLoaded && realmObject.isValid && realmObject.isNotEmpty() }
                 .map { steps ->
@@ -26,14 +28,15 @@ class RealmTutorialLocalRepository(realm: Realm) : RealmBaseLocalRepository(real
                     }
                 }
                 .map { steps -> steps.first() }
-                .cast(TutorialStep::class.java)
+                .cast(TutorialStep::class.java))
     }
 
     override fun getTutorialSteps(keys: List<String>): Flowable<RealmResults<TutorialStep>> {
-        return realm.where(TutorialStep::class.java)
+        if (realm.isClosed) return Flowable.empty()
+        return RxJavaBridge.toV3Flowable(realm.where(TutorialStep::class.java)
                 .`in`("identifier", keys.toTypedArray())
                 .findAll()
                 .asFlowable()
-                .filter { it.isLoaded }
-    }
+                .filter { it.isLoaded })
+}
 }

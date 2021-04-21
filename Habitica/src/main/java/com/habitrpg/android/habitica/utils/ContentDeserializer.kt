@@ -14,7 +14,6 @@ import com.habitrpg.android.habitica.models.Skill
 import com.habitrpg.android.habitica.models.inventory.*
 import io.realm.RealmList
 import java.lang.reflect.Type
-import java.util.*
 
 class ContentDeserializer : JsonDeserializer<ContentResult> {
 
@@ -29,25 +28,20 @@ class ContentDeserializer : JsonDeserializer<ContentResult> {
         result.armoire = context.deserialize(obj.get("armoire"), Equipment::class.java)
         result.gear = context.deserialize(obj.get("gear"), ContentGear::class.java)
 
-        result.quests = RealmList()
         for (entry in obj.get("quests").asJsonObject.entrySet()) {
             result.quests.add(context.deserialize(entry.value, QuestContent::class.java))
             result.quests.forEach { it.key = it.key }
         }
-        result.eggs = RealmList()
         for (entry in obj.get("eggs").asJsonObject.entrySet()) {
             result.eggs.add(context.deserialize(entry.value, Egg::class.java))
         }
-        result.food = RealmList()
         for (entry in obj.get("food").asJsonObject.entrySet()) {
             result.food.add(context.deserialize(entry.value, Food::class.java))
         }
-        result.hatchingPotions = RealmList()
         for (entry in obj.get("hatchingPotions").asJsonObject.entrySet()) {
             result.hatchingPotions.add(context.deserialize(entry.value, HatchingPotion::class.java))
         }
 
-        result.pets = RealmList()
         val pets = obj.getAsJsonObject("petInfo")
         for (key in pets.keySet()) {
             val pet = Pet()
@@ -57,17 +51,12 @@ class ContentDeserializer : JsonDeserializer<ContentResult> {
             pet.key = petObj.getAsString("key")
             pet.text = petObj.getAsString("text")
             pet.type = petObj.getAsString("type")
-            if (pet.type == "special") {
-                pet.animal = pet.key.split("-")[0]
-                pet.color = pet.key.split("-")[1]
-            }
             if (pet.type == "premium") {
                 pet.premium = true
             }
             result.pets.add(pet)
         }
 
-        result.mounts = RealmList()
         val mounts = obj.getAsJsonObject("mountInfo")
         for (key in mounts.keySet()) {
             val mount = Mount()
@@ -75,17 +64,13 @@ class ContentDeserializer : JsonDeserializer<ContentResult> {
             mount.animal = mountObj.getAsString("egg")
             mount.color = mountObj.getAsString("potion")
             mount.key = mountObj.getAsString("key")
+            mount.text = mountObj.getAsString("text")
             mount.type = mountObj.getAsString("type")
-            if (mount.type == "special") {
-                mount.animal = mount.key.split("-")[0]
-                mount.color = mount.key.split("-")[1]
-            }
             if (mount.type == "premium") {
                 mount.premium = true
             }
             result.mounts.add(mount)
         }
-        result.spells = ArrayList<Skill>()
         for ((classname, value) in obj.getAsJsonObject("spells").entrySet()) {
             val classObject = value.asJsonObject
 
@@ -111,6 +96,13 @@ class ContentDeserializer : JsonDeserializer<ContentResult> {
         }
         result.appearances = context.deserialize(obj.get("appearances"), object : TypeToken<RealmList<Customization>>() {}.type)
         result.backgrounds = context.deserialize(obj.get("backgrounds"), object : TypeToken<RealmList<Customization>>() {}.type)
+        val noBackground = Customization()
+        noBackground.customizationSet = "incentiveBackgrounds"
+        noBackground.customizationSetName = "Login Incentive"
+        noBackground.identifier = ""
+        noBackground.price = 0
+        noBackground.type = "background"
+        result.backgrounds.add(noBackground)
 
         result.faq = context.deserialize(obj.get("faq"), object : TypeToken<RealmList<FAQArticle>>() {}.type)
         deserializeTrace.stop()

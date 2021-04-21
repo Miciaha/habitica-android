@@ -2,24 +2,24 @@ package com.habitrpg.android.habitica.components;
 
 import com.habitrpg.android.habitica.HabiticaBaseApplication;
 import com.habitrpg.android.habitica.data.ApiClient;
-import com.habitrpg.android.habitica.helpers.RemindersManager;
 import com.habitrpg.android.habitica.helpers.SoundManager;
 import com.habitrpg.android.habitica.helpers.UserScope;
 import com.habitrpg.android.habitica.helpers.notifications.HabiticaFirebaseMessagingService;
 import com.habitrpg.android.habitica.helpers.notifications.PushNotificationManager;
-import com.habitrpg.android.habitica.modules.UserRepositoryModule;
 import com.habitrpg.android.habitica.modules.UserModule;
+import com.habitrpg.android.habitica.modules.UserRepositoryModule;
 import com.habitrpg.android.habitica.receivers.LocalNotificationActionReceiver;
 import com.habitrpg.android.habitica.receivers.NotificationPublisher;
 import com.habitrpg.android.habitica.receivers.TaskAlarmBootReceiver;
 import com.habitrpg.android.habitica.receivers.TaskReceiver;
-import com.habitrpg.android.habitica.ui.activities.AboutActivity;
+import com.habitrpg.android.habitica.ui.activities.AdventureGuideActivity;
 import com.habitrpg.android.habitica.ui.activities.ChallengeFormActivity;
 import com.habitrpg.android.habitica.ui.activities.ClassSelectionActivity;
 import com.habitrpg.android.habitica.ui.activities.FixCharacterValuesActivity;
 import com.habitrpg.android.habitica.ui.activities.FullProfileActivity;
 import com.habitrpg.android.habitica.ui.activities.GemPurchaseActivity;
-import com.habitrpg.android.habitica.ui.activities.GiftIAPActivity;
+import com.habitrpg.android.habitica.ui.activities.GiftGemsActivity;
+import com.habitrpg.android.habitica.ui.activities.GiftSubscriptionActivity;
 import com.habitrpg.android.habitica.ui.activities.GroupFormActivity;
 import com.habitrpg.android.habitica.ui.activities.GroupInviteActivity;
 import com.habitrpg.android.habitica.ui.activities.HabitButtonWidgetActivity;
@@ -42,30 +42,32 @@ import com.habitrpg.android.habitica.ui.adapter.tasks.RewardsRecyclerViewAdapter
 import com.habitrpg.android.habitica.ui.adapter.tasks.TodosRecyclerViewAdapter;
 import com.habitrpg.android.habitica.ui.fragments.AboutFragment;
 import com.habitrpg.android.habitica.ui.fragments.AchievementsFragment;
-import com.habitrpg.android.habitica.ui.fragments.GemsPurchaseFragment;
 import com.habitrpg.android.habitica.ui.fragments.NavigationDrawerFragment;
 import com.habitrpg.android.habitica.ui.fragments.NewsFragment;
+import com.habitrpg.android.habitica.ui.fragments.PromoInfoFragment;
 import com.habitrpg.android.habitica.ui.fragments.StatsFragment;
-import com.habitrpg.android.habitica.ui.fragments.SubscriptionFragment;
-import com.habitrpg.android.habitica.ui.fragments.faq.FAQDetailFragment;
-import com.habitrpg.android.habitica.ui.fragments.faq.FAQOverviewFragment;
 import com.habitrpg.android.habitica.ui.fragments.inventory.customization.AvatarCustomizationFragment;
+import com.habitrpg.android.habitica.ui.fragments.inventory.customization.AvatarEquipmentFragment;
 import com.habitrpg.android.habitica.ui.fragments.inventory.customization.AvatarOverviewFragment;
 import com.habitrpg.android.habitica.ui.fragments.inventory.equipment.EquipmentDetailFragment;
 import com.habitrpg.android.habitica.ui.fragments.inventory.equipment.EquipmentOverviewFragment;
 import com.habitrpg.android.habitica.ui.fragments.inventory.items.ItemRecyclerFragment;
 import com.habitrpg.android.habitica.ui.fragments.inventory.items.ItemsFragment;
 import com.habitrpg.android.habitica.ui.fragments.inventory.shops.ShopFragment;
-import com.habitrpg.android.habitica.ui.fragments.inventory.shops.ShopsFragment;
 import com.habitrpg.android.habitica.ui.fragments.inventory.stable.MountDetailRecyclerFragment;
 import com.habitrpg.android.habitica.ui.fragments.inventory.stable.PetDetailRecyclerFragment;
 import com.habitrpg.android.habitica.ui.fragments.inventory.stable.StableFragment;
 import com.habitrpg.android.habitica.ui.fragments.inventory.stable.StableRecyclerFragment;
 import com.habitrpg.android.habitica.ui.fragments.preferences.APIPreferenceFragment;
 import com.habitrpg.android.habitica.ui.fragments.preferences.AuthenticationPreferenceFragment;
+import com.habitrpg.android.habitica.ui.fragments.preferences.EmailNotificationsPreferencesFragment;
 import com.habitrpg.android.habitica.ui.fragments.preferences.PreferencesFragment;
 import com.habitrpg.android.habitica.ui.fragments.preferences.ProfilePreferencesFragment;
 import com.habitrpg.android.habitica.ui.fragments.preferences.PushNotificationsPreferencesFragment;
+import com.habitrpg.android.habitica.ui.fragments.purchases.GemsPurchaseFragment;
+import com.habitrpg.android.habitica.ui.fragments.purchases.GiftBalanceGemsFragment;
+import com.habitrpg.android.habitica.ui.fragments.purchases.GiftPurchaseGemsFragment;
+import com.habitrpg.android.habitica.ui.fragments.purchases.SubscriptionFragment;
 import com.habitrpg.android.habitica.ui.fragments.setup.AvatarSetupFragment;
 import com.habitrpg.android.habitica.ui.fragments.setup.IntroFragment;
 import com.habitrpg.android.habitica.ui.fragments.setup.TaskSetupFragment;
@@ -73,28 +75,33 @@ import com.habitrpg.android.habitica.ui.fragments.setup.WelcomeFragment;
 import com.habitrpg.android.habitica.ui.fragments.skills.SkillTasksRecyclerViewFragment;
 import com.habitrpg.android.habitica.ui.fragments.skills.SkillsFragment;
 import com.habitrpg.android.habitica.ui.fragments.social.ChatFragment;
-import com.habitrpg.android.habitica.ui.fragments.social.ChatListFragment;
-import com.habitrpg.android.habitica.ui.fragments.social.GroupInformationFragment;
-import com.habitrpg.android.habitica.ui.fragments.social.GuildDetailFragment;
-import com.habitrpg.android.habitica.ui.fragments.social.GuildFragment;
-import com.habitrpg.android.habitica.ui.fragments.social.GuildsOverviewFragment;
-import com.habitrpg.android.habitica.ui.fragments.social.InboxFragment;
+import com.habitrpg.android.habitica.ui.fragments.social.guilds.GuildDetailFragment;
+import com.habitrpg.android.habitica.ui.fragments.social.guilds.GuildFragment;
 import com.habitrpg.android.habitica.ui.fragments.social.InboxMessageListFragment;
-import com.habitrpg.android.habitica.ui.fragments.social.PublicGuildsFragment;
+import com.habitrpg.android.habitica.ui.fragments.social.InboxOverviewFragment;
+import com.habitrpg.android.habitica.ui.fragments.social.party.NoPartyFragmentFragment;
+import com.habitrpg.android.habitica.ui.fragments.social.guilds.GuildListFragment;
 import com.habitrpg.android.habitica.ui.fragments.social.QuestDetailFragment;
 import com.habitrpg.android.habitica.ui.fragments.social.TavernDetailFragment;
 import com.habitrpg.android.habitica.ui.fragments.social.TavernFragment;
 import com.habitrpg.android.habitica.ui.fragments.social.challenges.ChallengeDetailFragment;
 import com.habitrpg.android.habitica.ui.fragments.social.challenges.ChallengeListFragment;
 import com.habitrpg.android.habitica.ui.fragments.social.challenges.ChallengesOverviewFragment;
+import com.habitrpg.android.habitica.ui.fragments.social.guilds.GuildOverviewFragment;
 import com.habitrpg.android.habitica.ui.fragments.social.party.PartyDetailFragment;
 import com.habitrpg.android.habitica.ui.fragments.social.party.PartyFragment;
 import com.habitrpg.android.habitica.ui.fragments.social.party.PartyInviteFragment;
-import com.habitrpg.android.habitica.ui.fragments.social.party.PartyMemberListFragment;
+import com.habitrpg.android.habitica.ui.fragments.support.BugFixFragment;
+import com.habitrpg.android.habitica.ui.fragments.support.FAQDetailFragment;
+import com.habitrpg.android.habitica.ui.fragments.support.FAQOverviewFragment;
+import com.habitrpg.android.habitica.ui.fragments.support.SupportMainFragment;
 import com.habitrpg.android.habitica.ui.fragments.tasks.TaskRecyclerViewFragment;
 import com.habitrpg.android.habitica.ui.fragments.tasks.TasksFragment;
+import com.habitrpg.android.habitica.ui.fragments.tasks.TeamBoardFragment;
 import com.habitrpg.android.habitica.ui.viewmodels.GroupViewModel;
+import com.habitrpg.android.habitica.ui.viewmodels.InboxViewModel;
 import com.habitrpg.android.habitica.ui.viewmodels.NotificationsViewModel;
+import com.habitrpg.android.habitica.ui.views.insufficientCurrency.InsufficientGemsDialog;
 import com.habitrpg.android.habitica.ui.views.shops.PurchaseDialog;
 import com.habitrpg.android.habitica.ui.views.social.ChatBarView;
 import com.habitrpg.android.habitica.ui.views.stats.BulkAllocateStatsDialog;
@@ -115,8 +122,6 @@ import dagger.Subcomponent;
 @Subcomponent(modules = {UserModule.class, UserRepositoryModule.class})
 public interface UserComponent {
     void inject(ClassSelectionActivity classSelectionActivity);
-
-    void inject(AboutActivity aboutActivity);
 
     void inject(GroupFormActivity groupFormActivity);
 
@@ -141,8 +146,6 @@ public interface UserComponent {
     void inject(SkillMemberActivity skillMembersActivity);
 
     void inject(TasksFragment tasksFragment);
-
-    void inject(FAQDetailFragment faqDetailFragment);
 
     void inject(FAQOverviewFragment faqOverviewFragment);
 
@@ -180,17 +183,11 @@ public interface UserComponent {
 
     void inject(PartyInviteFragment partyInviteFragment);
 
-    void inject(PartyMemberListFragment partyMemberListFragment);
-
-    void inject(ChatListFragment chatListFragment);
-
-    void inject(GroupInformationFragment groupInformationFragment);
+    void inject(NoPartyFragmentFragment noPartyFragmentFragment);
 
     void inject(GuildFragment guildFragment);
 
-    void inject(GuildsOverviewFragment guildsOverviewFragment);
-
-    void inject(PublicGuildsFragment publicGuildsFragment);
+    void inject(GuildListFragment guildListFragment);
 
     void inject(TavernFragment tavernFragment);
 
@@ -204,11 +201,9 @@ public interface UserComponent {
 
     void inject(PreferencesFragment preferencesFragment);
 
-    void inject(InboxFragment inboxFragment);
+    void inject(InboxOverviewFragment inboxFragment);
 
     void inject(InboxMessageListFragment inboxMessageListFragment);
-
-    void inject(ShopsFragment shopsFragment);
 
     void inject(ShopFragment shopFragment);
 
@@ -237,8 +232,6 @@ public interface UserComponent {
     void inject(ApiClient apiClient);
 
     void inject(TaskListWidgetProvider taskListWidgetProvider);
-
-    void inject(RemindersManager remindersManager);
 
     void inject(DailiesRecyclerViewHolder dailiesRecyclerViewHolder);
 
@@ -278,45 +271,73 @@ public interface UserComponent {
 
     void inject(PurchaseDialog purchaseDialog);
 
-    void inject(@NotNull FixCharacterValuesActivity fixCharacterValuesActivity);
+    void inject(FixCharacterValuesActivity fixCharacterValuesActivity);
 
-    void inject(@NotNull AuthenticationPreferenceFragment authenticationPreferenceFragment);
+    void inject(AuthenticationPreferenceFragment authenticationPreferenceFragment);
 
-    void inject(@NotNull ProfilePreferencesFragment profilePreferencesFragment);
+    void inject(ProfilePreferencesFragment profilePreferencesFragment);
 
-    void inject(@NotNull APIPreferenceFragment apiPreferenceFragment);
+    void inject(APIPreferenceFragment apiPreferenceFragment);
 
-    void inject(@NotNull StatsFragment statsFragment);
+    void inject(StatsFragment statsFragment);
 
-    void inject(@NotNull BulkAllocateStatsDialog bulkAllocateStatsDialog);
+    void inject(BulkAllocateStatsDialog bulkAllocateStatsDialog);
 
-    void inject(@NotNull PushNotificationsPreferencesFragment pushNotificationsPreferencesFragment);
+    void inject(PushNotificationsPreferencesFragment pushNotificationsPreferencesFragment);
 
     void inject(WelcomeFragment welcomeFragment);
 
-    void inject(@NotNull NavigationDrawerFragment navigationDrawerFragment);
+    void inject(NavigationDrawerFragment navigationDrawerFragment);
 
-    void inject(@NotNull ChallengeDetailFragment challengeDetailFragment);
+    void inject(ChallengeDetailFragment challengeDetailFragment);
 
-    void inject(@NotNull VerifyUsernameActivity verifyUsernameActivity);
+    void inject(VerifyUsernameActivity verifyUsernameActivity);
 
-    void inject(@NotNull GroupViewModel viewModel);
+    void inject(GroupViewModel viewModel);
 
-    void inject(@NotNull NotificationsViewModel viewModel);
+    void inject(NotificationsViewModel viewModel);
 
-    void inject(@NotNull ChatFragment chatFragment);
+    void inject(ChatFragment chatFragment);
 
-    void inject(@NotNull GiftIAPActivity giftIAPActivity);
+    void inject(GiftSubscriptionActivity giftSubscriptionActivity);
 
-    void inject(@NotNull AboutFragment aboutFragment);
+    void inject(AboutFragment aboutFragment);
 
-    void inject(@NotNull ChatBarView chatBarView);
+    void inject(ChatBarView chatBarView);
 
-    void inject(@NotNull TaskFormActivity taskFormActivity);
+    void inject(TaskFormActivity taskFormActivity);
 
-    void inject(@NotNull ReportMessageActivity reportMessageActivity);
+    void inject(ReportMessageActivity reportMessageActivity);
 
-    void inject(@NotNull GuildDetailFragment guildDetailFragment);
+    void inject(GuildDetailFragment guildDetailFragment);
 
-    void inject(@NotNull AchievementsFragment achievementsFragment);
+    void inject(AchievementsFragment achievementsFragment);
+
+    void inject(InboxViewModel inboxViewModel);
+
+    void inject(InsufficientGemsDialog insufficientGemsDialog);
+
+    void inject(GiftGemsActivity giftGemsActivity);
+
+    void inject(GiftPurchaseGemsFragment giftPurchaseGemsFragment);
+
+    void inject(GiftBalanceGemsFragment giftBalanceGemsFragment);
+
+    void inject(EmailNotificationsPreferencesFragment emailNotificationsPreferencesFragment);
+
+    void inject(SupportMainFragment supportMainFragment);
+
+    void inject(BugFixFragment bugFixFragment);
+
+    void inject(AvatarEquipmentFragment avatarEquipmentFragment);
+
+    void inject(FAQDetailFragment faqDetailFragment);
+
+    void inject(AdventureGuideActivity adventureGuideFragment);
+
+    void inject(PromoInfoFragment promoInfoFragment);
+
+    void inject(@NotNull TeamBoardFragment teamBoardFragment);
+
+    void inject(@NotNull GuildOverviewFragment guildOverviewFragment);
 }

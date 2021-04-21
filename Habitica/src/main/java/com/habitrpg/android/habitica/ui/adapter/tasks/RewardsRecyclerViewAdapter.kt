@@ -6,35 +6,62 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.habitrpg.android.habitica.R
+import com.habitrpg.android.habitica.helpers.AppConfigManager
 import com.habitrpg.android.habitica.models.responses.TaskDirection
 import com.habitrpg.android.habitica.models.shops.ShopItem
 import com.habitrpg.android.habitica.models.tasks.ChecklistItem
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.models.user.User
+import com.habitrpg.android.habitica.ui.adapter.BaseRecyclerViewAdapter
 import com.habitrpg.android.habitica.ui.viewHolders.ShopItemViewHolder
 import com.habitrpg.android.habitica.ui.viewHolders.tasks.RewardViewHolder
-import io.reactivex.BackpressureStrategy
-import io.reactivex.Flowable
-import io.reactivex.subjects.PublishSubject
+import io.reactivex.rxjava3.core.BackpressureStrategy
+import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.subjects.PublishSubject
 import io.realm.OrderedRealmCollection
 
-class RewardsRecyclerViewAdapter(private var customRewards: OrderedRealmCollection<Task>?, private val layoutResource: Int, private val user: User?) : RecyclerView.Adapter<RecyclerView.ViewHolder>(), TaskRecyclerViewAdapter {
+class RewardsRecyclerViewAdapter(private var customRewards: OrderedRealmCollection<Task>?, private val layoutResource: Int) : BaseRecyclerViewAdapter<Task, RecyclerView.ViewHolder>(), TaskRecyclerViewAdapter {
+    var user: User? = null
+    set(value) {
+        field = value
+        notifyDataSetChanged()
+    }
+    override var canScoreTasks = true
     private var inAppRewards: OrderedRealmCollection<ShopItem>? = null
 
-    val errorButtonEventsSubject = PublishSubject.create<String>()
-    override val errorButtonEvents = errorButtonEventsSubject.toFlowable(BackpressureStrategy.DROP)
+    private val errorButtonEventsSubject = PublishSubject.create<String>()
+    override val errorButtonEvents: Flowable<String> = errorButtonEventsSubject.toFlowable(BackpressureStrategy.DROP)
     private var taskScoreEventsSubject = PublishSubject.create<Pair<Task, TaskDirection>>()
     override val taskScoreEvents: Flowable<Pair<Task, TaskDirection>> = taskScoreEventsSubject.toFlowable(BackpressureStrategy.LATEST)
-    protected var checklistItemScoreSubject = PublishSubject.create<Pair<Task, ChecklistItem>>()
+    private var checklistItemScoreSubject = PublishSubject.create<Pair<Task, ChecklistItem>>()
     override val checklistItemScoreEvents: Flowable<Pair<Task, ChecklistItem>> = checklistItemScoreSubject.toFlowable(BackpressureStrategy.DROP)
-    protected var taskOpenEventsSubject = PublishSubject.create<Task>()
+    private var taskOpenEventsSubject = PublishSubject.create<Task>()
     override val taskOpenEvents: Flowable<Task> = taskOpenEventsSubject.toFlowable(BackpressureStrategy.LATEST)
+    protected var brokenTaskEventsSubject = PublishSubject.create<Task>()
+    override val brokenTaskEvents: Flowable<Task> = brokenTaskEventsSubject.toFlowable(BackpressureStrategy.DROP)
+    private var purchaseCardSubject = PublishSubject.create<ShopItem>()
+    val purchaseCardEvents: Flowable<ShopItem> = purchaseCardSubject.toFlowable(BackpressureStrategy.LATEST)
+
+
+    override var taskDisplayMode: String = "standard"
+        set(value) {
+            if (field != value) {
+                field = value
+                notifyDataSetChanged()
+            }
+        }
 
     private val inAppRewardCount: Int
-        get() = inAppRewards?.size ?: 0
+        get() {
+            if (inAppRewards?.isValid != true) return 0
+            return inAppRewards?.size ?: 0
+        }
 
     private val customRewardCount: Int
-        get() = customRewards?.size ?: 0
+        get() {
+            if (customRewards?.isValid != true) return 0
+            return customRewards?.size ?: 0
+        }
 
     override var ignoreUpdates: Boolean
         get() = false
@@ -46,11 +73,17 @@ class RewardsRecyclerViewAdapter(private var customRewards: OrderedRealmCollecti
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return if (viewType == VIEWTYPE_CUSTOM_REWARD) {
-            RewardViewHolder(getContentView(parent), { task, direction -> taskScoreEventsSubject.onNext(Pair(task, direction)) }) {
+            RewardViewHolder(getContentView(parent), { task, direction -> taskScoreEventsSubject.onNext(Pair(task, direction)) }, {
                 task -> taskOpenEventsSubject.onNext(task)
+            }) {
+                task -> brokenTaskEventsSubject.onNext(task)
             }
         } else {
-            ShopItemViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.row_shopitem, parent, false))
+            val viewHolder = ShopItemViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.row_shopitem, parent, false))
+            viewHolder.purchaseCardAction = {
+                purchaseCardSubject.onNext(it)
+            }
+            viewHolder
         }
     }
 
@@ -58,11 +91,12 @@ class RewardsRecyclerViewAdapter(private var customRewards: OrderedRealmCollecti
         if (customRewards != null && position < customRewardCount) {
             val reward = customRewards?.get(position) ?: return
             val gold = user?.stats?.gp ?: 0.0
-            (holder as? RewardViewHolder)?.bind(reward, position, reward.value < gold)
+            (holder as? RewardViewHolder)?.isLocked = !canScoreTasks
+            (holder as? RewardViewHolder)?.bind(reward, position, reward.value <= gold, taskDisplayMode)
         } else if (inAppRewards != null) {
             val item = inAppRewards?.get(position - customRewardCount) ?: return
             if (holder is ShopItemViewHolder) {
-                holder.bind(item, item.canAfford(user))
+                holder.bind(item, item.canAfford(user, 1))
                 holder.isPinned = true
                 holder.hidePinIndicator()
             }
@@ -87,8 +121,8 @@ class RewardsRecyclerViewAdapter(private var customRewards: OrderedRealmCollecti
         return rewardCount
     }
 
-    override fun updateData(data: OrderedRealmCollection<Task>?) {
-        this.customRewards = data
+    fun updateData(tasks: OrderedRealmCollection<Task>?) {
+        this.customRewards = tasks
         notifyDataSetChanged()
     }
 
@@ -103,7 +137,7 @@ class RewardsRecyclerViewAdapter(private var customRewards: OrderedRealmCollecti
         notifyDataSetChanged()
     }
 
-    override fun filter() {}
+    override fun filter() { /* no-on */ }
 
     override fun getTaskIDAt(position: Int): String? {
         return customRewards?.get(position)?.id
@@ -111,7 +145,6 @@ class RewardsRecyclerViewAdapter(private var customRewards: OrderedRealmCollecti
 
     companion object {
         private const val VIEWTYPE_CUSTOM_REWARD = 0
-        private const val VIEWTYPE_HEADER = 1
         private const val VIEWTYPE_IN_APP_REWARD = 2
     }
 }

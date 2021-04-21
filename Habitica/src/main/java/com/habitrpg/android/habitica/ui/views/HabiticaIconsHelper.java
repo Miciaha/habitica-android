@@ -28,7 +28,7 @@ public class HabiticaIconsHelper {
         if (imageOfExperience != null)
             return imageOfExperience;
 
-        int size = scaleSize(18);
+        int size = scaleSize(24);
         imageOfExperience = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(imageOfExperience);
         canvas.scale(displayDensity, displayDensity);
@@ -42,13 +42,26 @@ public class HabiticaIconsHelper {
         if (imageOfMagic != null)
             return imageOfMagic;
 
-        int size = scaleSize(18);
+        int size = scaleSize(24);
         imageOfMagic = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(imageOfMagic);
         canvas.scale(displayDensity, displayDensity);
         HabiticaIcons.drawMagic(canvas);
 
         return imageOfMagic;
+    }
+
+    private static Bitmap imageOfMagicLarge = null;
+    public static Bitmap imageOfMagicLarge() {
+        if (imageOfMagicLarge != null)
+            return imageOfMagicLarge;
+
+        int size = scaleSize(36);
+        imageOfMagicLarge = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(imageOfMagicLarge);
+        HabiticaIcons.drawMagic(canvas, new RectF(0f, 0f, size, size), HabiticaIcons.ResizingBehavior.AspectFit);
+
+        return imageOfMagicLarge;
     }
 
     private static Bitmap imageOfGold = null;
@@ -91,6 +104,19 @@ public class HabiticaIconsHelper {
         HabiticaIcons.drawHourglass(canvas);
 
         return imageOfHourglass;
+    }
+
+    private static Bitmap imageOfHourglassLarge = null;
+    public static Bitmap imageOfHourglassLarge() {
+        if (imageOfHourglassLarge != null)
+            return imageOfHourglassLarge;
+
+        int size = scaleSize(40);
+        imageOfHourglassLarge = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(imageOfHourglassLarge);
+        HabiticaIcons.drawHourglass(canvas, new RectF(0f, 0f, size, size), HabiticaIcons.ResizingBehavior.AspectFit);
+
+        return imageOfHourglassLarge;
     }
 
     private static Bitmap imageOfExperienceReward = null;
@@ -138,7 +164,7 @@ public class HabiticaIconsHelper {
         if (imageOfHeartLightBg != null)
             return imageOfHeartLightBg;
 
-        int size = scaleSize(18);
+        int size = scaleSize(24);
         imageOfHeartLightBg = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(imageOfHeartLightBg);
         canvas.scale(displayDensity, displayDensity);
@@ -155,8 +181,7 @@ public class HabiticaIconsHelper {
         int size = scaleSize(36);
         imageOfHeartLarge = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(imageOfHeartLarge);
-        canvas.scale(displayDensity, displayDensity);
-        HabiticaIcons.drawHeart(canvas, false);
+        HabiticaIcons.drawHeart(canvas, new RectF(0f, 0f, size, size), HabiticaIcons.ResizingBehavior.AspectFit, false);
 
         return imageOfHeartLarge;
     }
@@ -231,7 +256,7 @@ public class HabiticaIconsHelper {
         if (imageOfPinItem != null)
             return imageOfPinItem;
 
-        int size = scaleSize(40);
+        int size = scaleSize(24);
         imageOfPinItem = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(imageOfPinItem);
         canvas.scale(displayDensity, displayDensity);
@@ -245,7 +270,7 @@ public class HabiticaIconsHelper {
         if (imageOfUnpinItem != null)
             return imageOfUnpinItem;
 
-        int size = scaleSize(40);
+        int size = scaleSize(24);
         imageOfUnpinItem = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(imageOfUnpinItem);
         canvas.scale(displayDensity, displayDensity);
@@ -263,9 +288,23 @@ public class HabiticaIconsHelper {
         imageOfItemIndicatorNumber = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(imageOfItemIndicatorNumber);
         canvas.scale(displayDensity, displayDensity);
-        HabiticaIcons.drawItemIndicator(canvas, Color.parseColor("#C3C0C7"), false, false);
+        HabiticaIcons.drawItemIndicator(canvas, Color.parseColor("#C3C0C7"), false, false, false);
 
         return imageOfItemIndicatorNumber;
+    }
+
+    private static Bitmap imageOfItemIndicatorNumberDark = null;
+    public static Bitmap imageOfItemIndicatorNumberDark() {
+        if (imageOfItemIndicatorNumberDark != null)
+            return imageOfItemIndicatorNumberDark;
+
+        int size = scaleSize(28);
+        imageOfItemIndicatorNumberDark = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(imageOfItemIndicatorNumberDark);
+        canvas.scale(displayDensity, displayDensity);
+        HabiticaIcons.drawItemIndicator(canvas, Color.parseColor("#C3C0C7"), false, false, true);
+
+        return imageOfItemIndicatorNumberDark;
     }
 
     private static Bitmap imageOfItemIndicatorLocked = null;
@@ -277,8 +316,21 @@ public class HabiticaIconsHelper {
         imageOfItemIndicatorLocked = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(imageOfItemIndicatorLocked);
         canvas.scale(displayDensity, displayDensity);
-        HabiticaIcons.drawItemIndicator(canvas, Color.parseColor("#C3C0C7"), true, false);
+        HabiticaIcons.drawItemIndicator(canvas, Color.parseColor("#C3C0C7"), true, false, false);
         return imageOfItemIndicatorLocked;
+    }
+
+    private static Bitmap imageOfItemIndicatorLockedDark = null;
+    public static Bitmap imageOfItemIndicatorLockedDark() {
+        if (imageOfItemIndicatorLockedDark != null)
+            return imageOfItemIndicatorLockedDark;
+
+        int size = scaleSize(28);
+        imageOfItemIndicatorLockedDark = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(imageOfItemIndicatorLockedDark);
+        canvas.scale(displayDensity, displayDensity);
+        HabiticaIcons.drawItemIndicator(canvas, Color.parseColor("#C3C0C7"), true, false, true);
+        return imageOfItemIndicatorLockedDark;
     }
 
     private static Bitmap imageOfItemIndicatorLimited = null;
@@ -290,7 +342,7 @@ public class HabiticaIconsHelper {
         imageOfItemIndicatorLimited = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(imageOfItemIndicatorLimited);
         canvas.scale(displayDensity, displayDensity);
-        HabiticaIcons.drawItemIndicator(canvas, Color.parseColor("#C3C0C7"), false, true);
+        HabiticaIcons.drawItemIndicator(canvas, Color.parseColor("#C3C0C7"), false, true, false);
 
         return imageOfItemIndicatorLimited;
     }
@@ -578,11 +630,14 @@ public class HabiticaIconsHelper {
     }
 
     public static Bitmap imageOfLocked(@ColorInt int lockColor) {
-        Bitmap imageOfLocked = Bitmap.createBitmap(scaleSize(15), scaleSize(17), Bitmap.Config.ARGB_8888);
+        return imageOfLocked(lockColor, 15, 17);
+    }
+
+        public static Bitmap imageOfLocked(@ColorInt int lockColor, int width, int height) {
+        Bitmap imageOfLocked = Bitmap.createBitmap(scaleSize(width), scaleSize(height), Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(imageOfLocked);
         canvas.scale(displayDensity, displayDensity);
-        HabiticaIcons.drawLocked(canvas, lockColor);
-
+        HabiticaIcons.drawLocked(canvas, new RectF(0f, 0f, width, height), HabiticaIcons.ResizingBehavior.AspectFit, lockColor);
         return imageOfLocked;
     }
 
@@ -707,6 +762,20 @@ public class HabiticaIconsHelper {
         return imageOfBuffIcon;
     }
 
+    private static Bitmap imageOfBuffIconDark = null;
+    public static Bitmap imageOfBuffIconDark() {
+        if (imageOfBuffIconDark != null)
+            return imageOfBuffIconDark;
+
+        int size = scaleSize(15);
+        imageOfBuffIconDark = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(imageOfBuffIconDark);
+        canvas.scale(displayDensity, displayDensity);
+        HabiticaIcons.drawBuffIcon(canvas);
+
+        return imageOfBuffIconDark;
+    }
+
     public static Bitmap imageOfTaskDifficultyStars(int taskTintColor, float difficulty, boolean isActive) {
         int size = scaleSize(36);
         Bitmap imageOfTaskDifficultyStars = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
@@ -735,5 +804,61 @@ public class HabiticaIconsHelper {
         HabiticaIcons.drawHabitControlMinus(canvas, taskTintColor, isActive);
 
         return imageOfHabitControlMinus;
+    }
+
+    public static Bitmap imageOfStats() {
+        int width = scaleSize(30);
+        int height = scaleSize(30);
+        Bitmap imageOfHabitControlMinus = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(imageOfHabitControlMinus);
+        canvas.scale(displayDensity, displayDensity);
+        HabiticaIcons.drawStats(canvas);
+
+        return imageOfHabitControlMinus;
+    }
+
+    public static Bitmap imageOfFallGemPromoBG(int redGemColor, int greenGemColor, int blueGemColor, int purpleGemColor) {
+        Bitmap imageOfFallGemPromoBG = Bitmap.createBitmap(scaleSize(132), scaleSize(35), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(imageOfFallGemPromoBG);
+        canvas.scale(displayDensity, displayDensity);
+        HabiticaIcons.drawFallGemPromoBG(canvas, redGemColor, greenGemColor, blueGemColor, purpleGemColor);
+
+        return imageOfFallGemPromoBG;
+    }
+
+    public static Bitmap imageOfSpookyGemPromoBG() {
+        Bitmap imageOfSpookyGemPromoBG = Bitmap.createBitmap(scaleSize(132), scaleSize(35), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(imageOfSpookyGemPromoBG);
+        canvas.scale(displayDensity, displayDensity);
+        HabiticaIcons.drawSpookyGemPromoBG(canvas);
+
+        return imageOfSpookyGemPromoBG;
+    }
+
+    public static Bitmap imageOfGuildCrest(Context context, boolean isOwner, boolean isPublic, float memberCount, String memberCountLabel) {
+        Bitmap imageOfGuildCrest = Bitmap.createBitmap(scaleSize(40), scaleSize(38), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(imageOfGuildCrest);
+        canvas.scale(displayDensity, displayDensity);
+        HabiticaIcons.drawGuildCrest(canvas, context, isOwner, isPublic, memberCount, memberCountLabel);
+
+        return imageOfGuildCrest;
+    }
+
+    public static Bitmap imageOfGuildCrestMedium(float memberCount) {
+        Bitmap imageOfGuildCrestMedium = Bitmap.createBitmap(scaleSize(30), scaleSize(34), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(imageOfGuildCrestMedium);
+        canvas.scale(displayDensity, displayDensity);
+        HabiticaIcons.drawGuildCrestMedium(canvas, memberCount);
+
+        return imageOfGuildCrestMedium;
+    }
+
+    public static Bitmap imageOfGuildCrestSmall(float memberCount) {
+        Bitmap imageOfGuildCrestSmall = Bitmap.createBitmap(scaleSize(16), scaleSize(16), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(imageOfGuildCrestSmall);
+        canvas.scale(displayDensity, displayDensity);
+        HabiticaIcons.drawGuildCrestSmall(canvas, memberCount);
+
+        return imageOfGuildCrestSmall;
     }
 }

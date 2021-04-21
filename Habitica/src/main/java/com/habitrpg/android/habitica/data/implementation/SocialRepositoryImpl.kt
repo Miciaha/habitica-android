@@ -1,5 +1,6 @@
 package com.habitrpg.android.habitica.data.implementation
 
+import com.habitrpg.android.habitica.BuildConfig
 import com.habitrpg.android.habitica.data.ApiClient
 import com.habitrpg.android.habitica.data.SocialRepository
 import com.habitrpg.android.habitica.data.local.SocialLocalRepository
@@ -8,20 +9,40 @@ import com.habitrpg.android.habitica.models.Achievement
 import com.habitrpg.android.habitica.models.inventory.Quest
 import com.habitrpg.android.habitica.models.members.Member
 import com.habitrpg.android.habitica.models.responses.PostChatMessageResult
-import com.habitrpg.android.habitica.models.social.ChatMessage
-import com.habitrpg.android.habitica.models.social.FindUsernameResult
-import com.habitrpg.android.habitica.models.social.Group
-import com.habitrpg.android.habitica.models.social.GroupMembership
+import com.habitrpg.android.habitica.models.social.*
 import com.habitrpg.android.habitica.models.user.User
-import io.reactivex.Flowable
-import io.reactivex.Single
-import io.reactivex.functions.BiFunction
-import io.reactivex.functions.Consumer
+import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.core.Single
 import io.realm.RealmResults
+import java.util.*
+import kotlin.collections.HashMap
 
 class SocialRepositoryImpl(localRepository: SocialLocalRepository, apiClient: ApiClient, userID: String) : BaseRepositoryImpl<SocialLocalRepository>(localRepository, apiClient, userID), SocialRepository {
+    override fun transferGroupOwnership(groupID: String, userID: String): Flowable<Group> {
+        return localRepository.getGroup(groupID)
+                .map {
+                    val group = localRepository.getUnmanagedCopy(it)
+                    group.leaderID = userID
+                    group
+                }
+                .flatMap {
+                    apiClient.updateGroup(it.id, it)
+                }
+    }
+
+    override fun removeMemberFromGroup(groupID: String, userID: String): Flowable<List<Member>> {
+        return apiClient.removeMemberFromGroup(groupID, userID)
+                .flatMap {
+                    retrieveGroupMembers(groupID, true)
+                }
+    }
+
     override fun getChatmessage(messageID: String): Flowable<ChatMessage> {
         return localRepository.getChatMessage(messageID)
+    }
+
+    override fun blockMember(userID: String): Flowable<List<String>> {
+        return apiClient.blockMember(userID)
     }
 
     override fun getGroupMembership(id: String): Flowable<GroupMembership> {
@@ -48,21 +69,27 @@ class SocialRepositoryImpl(localRepository: SocialLocalRepository, apiClient: Ap
     }
 
     override fun markMessagesSeen(seenGroupId: String) {
-        apiClient.seenMessages(seenGroupId).subscribe(Consumer { }, RxErrorHandler.handleEmptyError())
+        apiClient.seenMessages(seenGroupId).subscribe({ }, RxErrorHandler.handleEmptyError())
     }
 
     override fun flagMessage(chatMessage: ChatMessage, additionalInfo: String): Flowable<Void> {
-        return if (chatMessage.id == "") {
-            Flowable.empty()
-        } else {
-            val data = mutableMapOf<String, String>()
-            data["comment"] = additionalInfo
-            apiClient.flagMessage(chatMessage.groupId ?: "", chatMessage.id, data)
+        return when {
+            chatMessage.id.isBlank() -> Flowable.empty()
+            userID == BuildConfig.ANDROID_TESTING_UUID -> Flowable.empty()
+            else -> {
+                val data = mutableMapOf<String, String>()
+                data["comment"] = additionalInfo
+                if (chatMessage.isInboxMessage) {
+                    apiClient.flagInboxMessage(chatMessage.id, data)
+                } else {
+                    apiClient.flagMessage(chatMessage.groupId ?: "", chatMessage.id, data)
+                }
+            }
         }
     }
 
     override fun likeMessage(chatMessage: ChatMessage): Flowable<ChatMessage> {
-        if (chatMessage.id == "") {
+        if (chatMessage.id.isBlank()) {
             return Flowable.empty()
         }
         val liked = chatMessage.userLikesMessage(userID)
@@ -99,38 +126,32 @@ class SocialRepositoryImpl(localRepository: SocialLocalRepository, apiClient: Ap
     }
 
     override fun retrieveGroup(id: String): Flowable<Group> {
-        return Flowable.zip(apiClient.getGroup(id).doOnNext { localRepository.save(it) }, retrieveGroupChat(id)
-                .map { message ->
-                    message.forEach {
-                        it.groupId = id
-                    }
-                    message
-                }
-                .doOnSuccess { localRepository.save(it) }.toFlowable(),
-                BiFunction<Group, List<ChatMessage>, Group> { group, _ ->
+        return Flowable.zip(apiClient.getGroup(id).doOnNext { localRepository.saveSyncronous(it) }, retrieveGroupChat(id)
+                .toFlowable(),
+                { group, _ ->
                     group
                 }
         )
     }
 
     override fun getGroup(id: String?): Flowable<Group> {
-        if (id == null) {
+        if (id?.isNotBlank() != true) {
             return Flowable.empty()
         }
         return localRepository.getGroup(id)
     }
 
-    override fun leaveGroup(id: String?): Flowable<Group> {
-        if (id == null) {
+    override fun leaveGroup(id: String?, keepChallenges: Boolean): Flowable<Group> {
+        if (id?.isNotBlank() != true) {
             return Flowable.empty()
         }
-        return apiClient.leaveGroup(id)
+        return apiClient.leaveGroup(id, if (keepChallenges) "remain-in-challenges" else "leave-challenges")
                 .doOnNext { localRepository.updateMembership(userID, id, false) }
                 .flatMapMaybe { localRepository.getGroup(id).firstElement() }
     }
 
     override fun joinGroup(id: String?): Flowable<Group> {
-        if (id == null) {
+        if (id?.isNotBlank() != true) {
             return Flowable.empty()
         }
         return apiClient.joinGroup(id)
@@ -152,7 +173,7 @@ class SocialRepositoryImpl(localRepository: SocialLocalRepository, apiClient: Ap
         }
     }
 
-    override fun updateGroup(group: Group?, name: String?, description: String?, leader: String?, leaderCreateChallenge: Boolean?): Flowable<Void> {
+    override fun updateGroup(group: Group?, name: String?, description: String?, leader: String?, leaderCreateChallenge: Boolean?): Flowable<Group> {
         if (group == null) {
             return Flowable.empty()
         }
@@ -182,28 +203,34 @@ class SocialRepositoryImpl(localRepository: SocialLocalRepository, apiClient: Ap
 
     override fun getPublicGuilds(): Flowable<RealmResults<Group>> = localRepository.getPublicGuilds()
 
-    override fun getInboxOverviewList(): Flowable<RealmResults<ChatMessage>> = localRepository.getInboxOverviewList(userID)
+    override fun getInboxConversations(): Flowable<RealmResults<InboxConversation>> = localRepository.getInboxConversation(userID)
 
     override fun getInboxMessages(replyToUserID: String?): Flowable<RealmResults<ChatMessage>> = localRepository.getInboxMessages(userID, replyToUserID)
 
-    override fun retrieveInboxMessages(): Flowable<List<ChatMessage>> {
-        return apiClient.retrieveInboxMessages().doOnNext { messages ->
+    override fun retrieveInboxMessages(uuid: String, page: Int): Flowable<List<ChatMessage>> {
+        return apiClient.retrieveInboxMessages(uuid, page).doOnNext { messages ->
             messages.forEach {
                 it.isInboxMessage = true
             }
-            localRepository.saveInboxMessages(userID, messages)
+            localRepository.saveInboxMessages(userID, uuid, messages, page)
         }
     }
 
-    override fun postPrivateMessage(messageObject: HashMap<String, String>): Flowable<List<ChatMessage>> {
-        return apiClient.postPrivateMessage(messageObject).flatMap { retrieveInboxMessages() }
+    override fun retrieveInboxConversations(): Flowable<List<InboxConversation>> {
+        return apiClient.retrieveInboxConversations().doOnNext { conversations ->
+            localRepository.saveInboxConversations(userID, conversations)
+        }
+    }
+
+    override fun postPrivateMessage(recipientId: String, messageObject: HashMap<String, String>): Flowable<List<ChatMessage>> {
+        return apiClient.postPrivateMessage(messageObject).flatMap { retrieveInboxMessages(recipientId, 0) }
     }
 
     override fun postPrivateMessage(recipientId: String, message: String): Flowable<List<ChatMessage>> {
         val messageObject = HashMap<String, String>()
         messageObject["message"] = message
         messageObject["toUserId"] = recipientId
-        return postPrivateMessage(messageObject)
+        return postPrivateMessage(recipientId, messageObject)
     }
 
     override fun getGroupMembers(id: String): Flowable<RealmResults<Member>> = localRepository.getGroupMembers(id)
@@ -213,18 +240,22 @@ class SocialRepositoryImpl(localRepository: SocialLocalRepository, apiClient: Ap
                 .doOnNext { members -> localRepository.saveGroupMembers(id, members) }
     }
 
-    override fun inviteToGroup(id: String, inviteData: Map<String, Any>): Flowable<List<String>> = apiClient.inviteToGroup(id, inviteData)
+    override fun inviteToGroup(id: String, inviteData: Map<String, Any>): Flowable<Void> = apiClient.inviteToGroup(id, inviteData)
 
     override fun getMember(userId: String?): Flowable<Member> {
         return if (userId == null) {
             Flowable.empty()
-        } else apiClient.getMember(userId)
+        } else {
+            try {
+                apiClient.getMember(UUID.fromString(userId).toString())
+            } catch(_: IllegalArgumentException) {
+                apiClient.getMemberWithUsername(userId)
+            }
+        }
     }
 
     override fun getMemberWithUsername(username: String?): Flowable<Member> {
-        return if (username == null) {
-            Flowable.empty()
-        } else apiClient.getMemberWithUsername(username)
+        return getMember(username)
     }
 
     override fun findUsernames(username: String, context: String?, id: String?): Flowable<List<FindUsernameResult>> {
@@ -235,12 +266,12 @@ class SocialRepositoryImpl(localRepository: SocialLocalRepository, apiClient: Ap
         return apiClient.markPrivateMessagesRead()
                 .doOnNext {
                     if (user?.isManaged == true) {
-                        localRepository.executeTransaction { user.inbox?.newMessages = 0 }
+                        localRepository.modify(user) { it.inbox?.newMessages = 0 }
                     }
                 }
     }
 
-    override fun getUserGroups(): Flowable<RealmResults<Group>> = localRepository.getUserGroups(userID)
+    override fun getUserGroups(type: String?): Flowable<RealmResults<Group>> = localRepository.getUserGroups(userID, type)
 
     override fun acceptQuest(user: User?, partyId: String): Flowable<Void> {
         return apiClient.acceptQuest(partyId)
@@ -290,5 +321,9 @@ class SocialRepositoryImpl(localRepository: SocialLocalRepository, apiClient: Ap
         return if (userId == null) {
             Flowable.empty()
         } else apiClient.getMemberAchievements(userId)
+    }
+
+    override fun transferGems(giftedID: String, amount: Int): Flowable<Void> {
+        return apiClient.transferGems(giftedID, amount)
     }
 }

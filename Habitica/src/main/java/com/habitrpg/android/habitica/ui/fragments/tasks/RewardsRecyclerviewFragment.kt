@@ -1,6 +1,8 @@
 package com.habitrpg.android.habitica.ui.fragments.tasks
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -9,19 +11,24 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.habitrpg.android.habitica.R
+import com.habitrpg.android.habitica.extensions.subscribeWithErrorHandler
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.models.shops.ShopItem
-import com.habitrpg.android.habitica.models.user.User
+import com.habitrpg.android.habitica.ui.activities.MainActivity
+import com.habitrpg.android.habitica.ui.activities.SkillMemberActivity
 import com.habitrpg.android.habitica.ui.adapter.tasks.RewardsRecyclerViewAdapter
 import com.habitrpg.android.habitica.ui.helpers.SafeDefaultItemAnimator
-import io.reactivex.functions.Consumer
-import kotlinx.android.synthetic.main.fragment_refresh_recyclerview.*
+import com.habitrpg.android.habitica.ui.views.HabiticaSnackbar
+import io.reactivex.rxjava3.functions.Consumer
 import java.util.*
 
 class RewardsRecyclerviewFragment : TaskRecyclerViewFragment() {
 
+    private var showCustomRewards: Boolean = true
+    private var selectedCard: ShopItem? = null
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        compositeSubscription.add(inventoryRepository.retrieveInAppRewards().subscribe(Consumer { }, RxErrorHandler.handleEmptyError()))
+        compositeSubscription.add(inventoryRepository.retrieveInAppRewards().subscribe({ }, RxErrorHandler.handleEmptyError()))
         return super.onCreateView(inflater, container, savedInstanceState)
     }
 
@@ -40,25 +47,39 @@ class RewardsRecyclerviewFragment : TaskRecyclerViewFragment() {
 
         view.post { setGridSpanCount(view.width) }
         context?.let {
-            recyclerView.setBackgroundColor(ContextCompat.getColor(it, R.color.white))
+            binding?.recyclerView?.setBackgroundColor(ContextCompat.getColor(it, R.color.content_background))
         }
-        recyclerView.itemAnimator = SafeDefaultItemAnimator()
+        binding?.recyclerView?.itemAnimator = SafeDefaultItemAnimator()
 
-        compositeSubscription.add(inventoryRepository.getInAppRewards().subscribe(Consumer {
-            (recyclerAdapter as? RewardsRecyclerViewAdapter)?.updateItemRewards(it)
+        if (showCustomRewards) {
+            compositeSubscription.add(inventoryRepository.getInAppRewards().subscribe({
+                (recyclerAdapter as? RewardsRecyclerViewAdapter)?.updateItemRewards(it)
+            }, RxErrorHandler.handleEmptyError()))
+        }
+
+        (recyclerAdapter as? RewardsRecyclerViewAdapter)?.purchaseCardEvents?.subscribe({
+            selectedCard = it
+            val intent = Intent(activity, SkillMemberActivity::class.java)
+            startActivityForResult(intent, 11)
+        }, RxErrorHandler.handleEmptyError())?.let { compositeSubscription.add(it) }
+        recyclerAdapter?.brokenTaskEvents?.subscribeWithErrorHandler { showBrokenChallengeDialog(it) }?.let { compositeSubscription.add(it) }
+
+        compositeSubscription.add(userRepository.getUser().subscribe({
+            (recyclerAdapter as? RewardsRecyclerViewAdapter)?.user = it
         }, RxErrorHandler.handleEmptyError()))
     }
 
-    override fun getLayoutManager(context: Context?): LinearLayoutManager =
-            GridLayoutManager(context, 4)
+    override fun getLayoutManager(context: Context?): LinearLayoutManager {
+        return GridLayoutManager(context, 4)
+    }
 
     override fun onRefresh() {
-        refreshLayout.isRefreshing = true
+        binding?.refreshLayout?.isRefreshing = true
         compositeSubscription.add(userRepository.retrieveUser(true, true)
-                .flatMap<List<ShopItem>> { inventoryRepository.retrieveInAppRewards() }
+                .flatMap { inventoryRepository.retrieveInAppRewards() }
                 .doOnTerminate {
-                    refreshLayout?.isRefreshing = false
-                }.subscribe(Consumer { }, RxErrorHandler.handleEmptyError()))
+                    binding?.refreshLayout?.isRefreshing = false
+                }.subscribe({ }, RxErrorHandler.handleEmptyError()))
     }
 
     private fun setGridSpanCount(width: Int) {
@@ -72,21 +93,41 @@ class RewardsRecyclerviewFragment : TaskRecyclerViewFragment() {
         if (spanCount == 0) {
             spanCount = 1
         }
-        (layoutManager as GridLayoutManager).spanCount = spanCount
+        (layoutManager as? GridLayoutManager)?.spanCount = spanCount
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (data != null) {
+            when (requestCode) {
+                11 -> {
+                    if (resultCode == Activity.RESULT_OK) {
+                        userRepository.useSkill(selectedCard?.key ?: "",
+                                "member",
+                                data.getStringExtra("member_id") ?: "")
+                                .subscribeWithErrorHandler(Consumer {
+                                    val activity = (activity as? MainActivity) ?: return@Consumer
+                                    HabiticaSnackbar.showSnackbar(activity.snackbarContainer,
+                                            context?.getString(R.string.sent_card, selectedCard?.text),
+                                            HabiticaSnackbar.SnackbarDisplayType.BLUE)
+                                })
+                    }
+                }
+            }
+        }
     }
 
     companion object {
 
-        fun newInstance(context: Context?, user: User?, classType: String): RewardsRecyclerviewFragment {
+        fun newInstance(context: Context?, classType: String, showCustomRewards: Boolean): RewardsRecyclerviewFragment {
             val fragment = RewardsRecyclerviewFragment()
             fragment.retainInstance = true
-            fragment.user = user
-            fragment.classType = classType
+            fragment.taskType = classType
+            fragment.showCustomRewards = showCustomRewards
 
             if (context != null) {
                 fragment.tutorialStepIdentifier = "rewards"
-                fragment.tutorialTexts = ArrayList(Arrays.asList(context.getString(R.string.tutorial_rewards_1),
-                        context.getString(R.string.tutorial_rewards_2)))
+                fragment.tutorialTexts = ArrayList(listOf(context.getString(R.string.tutorial_rewards_1), context.getString(R.string.tutorial_rewards_2)))
             }
             fragment.tutorialCanBeDeferred = false
 

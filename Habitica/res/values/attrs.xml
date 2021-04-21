@@ -8,16 +8,24 @@
     <attr name="textColorPrimary" format="color" />
     <attr name="textColorSecondary" format="color" />
     <attr name="textColorPrimaryDark" format="color" />
+    <attr name="barColor" format="color" />
+    <attr name="toolbarContentColor" format="color" />
+    <attr name="colorPrimaryText" format="color" />
+    <attr name="taskFormTint" format="color" />
     <attr name="textColorSecondaryDark" format="color" />
     <attr name="statsColor" format="color" />
     <attr name="statsTitle" format="string" />
     <attr name="title" format="string" />
+    <attr name="description" format="string" />
     <attr name="iconDrawable" format="integer" />
     <attr name="identifier" format="string" />
     <attr name="hasLightBackground" format="boolean" />
     <attr name="barForegroundColor" format="color" />
     <attr name="barPendingColor" format="color" />
     <attr name="barBackgroundColor" format="color" />
+    <attr name="headerBackgroundColor" format="color" />
+    <attr name="headerOffsetColor" format="color" />
+    <attr name="headerTextColor" format="color" />
     <declare-styleable name="AvatarView">
         <attr name="showBackground" format="boolean" />
         <attr name="showMount" format="boolean" />
@@ -29,7 +37,6 @@
         <attr name="gemAmount" format="integer" />
         <attr name="priceText" format="string" />
         <attr name="gemDrawable" format="integer" />
-        <attr name="showSeedsPromo" format="boolean" />
     </declare-styleable>
 
     <declare-styleable name="MaxHeightLinearLayout">
@@ -40,6 +47,7 @@
         <attr name="gemCapText" format="string" />
         <attr name="isNonRecurring" format="boolean" />
         <attr name="hourGlassCount" format="integer" />
+        <attr name="flagText" format="string" />
     </declare-styleable>
     <declare-styleable name="SpeechBubbleView">
         <attr name="namePlate" format="string" />
@@ -59,7 +67,7 @@
         <attr name="barIconDrawable" format="integer" />
         <attr name="barHeight" format="dimension" />
         <attr name="lightBackground" format="boolean" />
-        <attr name="description" format="string" />
+        <attr name="description" />
         <attr name="labelSpacing" format="dimension" />
     </declare-styleable>
     <declare-styleable name="HabiticaProgressBar">
@@ -123,5 +131,26 @@
     <declare-styleable name="BottomNavigationItem">
         <attr name="title" />
         <attr name="iconDrawable" />
+        <attr name="selectedIconDrawable" format="integer" />
+    </declare-styleable>
+    <declare-styleable name="EquipmentOverviewItem">
+        <attr name="title" />
+    </declare-styleable>
+    <declare-styleable name="SupportCollapsibleSection">
+        <attr name="title" />
+        <attr name="titleColor" format="color" />
+        <attr name="subtitle" format="string" />
+        <attr name="description" />
+        <attr name="iconDrawable" />
+    </declare-styleable>
+    <declare-styleable name="StepperValueFormView">
+        <attr name="defaultValue" />
+        <attr name="iconDrawable" />
+        <attr name="maxValue" format="integer" />
+        <attr name="minValue" format="integer" />
+    </declare-styleable>
+    <declare-styleable name="DayNightTextView">
+        <attr name="dayTextColor" format="color" />
+        <attr name="nightTextColor" format="color" />
     </declare-styleable>
 </resources>

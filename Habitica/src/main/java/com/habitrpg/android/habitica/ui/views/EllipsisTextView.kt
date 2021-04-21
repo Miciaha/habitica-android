@@ -16,9 +16,9 @@ package com.habitrpg.android.habitica.ui.views
 
 import android.content.Context
 import android.util.AttributeSet
-import com.habitrpg.android.habitica.R
+import androidx.appcompat.widget.AppCompatTextView
 
-class EllipsisTextView : HabiticaEmojiTextView {
+class EllipsisTextView : AppCompatTextView {
 
     private val ellipsesListeners = ArrayList<EllipsisListener>()
 
@@ -56,10 +56,8 @@ class EllipsisTextView : HabiticaEmojiTextView {
         val layout = layout
         if (layout != null) {
             val lines = layout.lineCount
-            if (lines > 0) {
-                if (layout.getEllipsisCount(lines - 1) > 0) {
-                    ellipses = true
-                }
+            if (lines >= maxLines) {
+                ellipses = true
             }
         }
 

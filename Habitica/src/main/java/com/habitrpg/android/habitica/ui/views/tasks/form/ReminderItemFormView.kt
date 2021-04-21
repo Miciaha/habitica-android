@@ -5,18 +5,22 @@ import android.app.TimePickerDialog
 import android.content.Context
 import android.util.AttributeSet
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.LinearInterpolator
 import android.view.animation.RotateAnimation
-import android.widget.*
+import android.widget.DatePicker
+import android.widget.LinearLayout
+import android.widget.TimePicker
 import androidx.core.content.ContextCompat
 import com.habitrpg.android.habitica.R
+import com.habitrpg.android.habitica.databinding.TaskFormReminderItemBinding
 import com.habitrpg.android.habitica.extensions.dpToPx
-import com.habitrpg.android.habitica.extensions.inflate
+import com.habitrpg.android.habitica.extensions.getThemeColor
+import com.habitrpg.android.habitica.extensions.layoutInflater
 import com.habitrpg.android.habitica.models.tasks.RemindersItem
 import com.habitrpg.android.habitica.models.tasks.Task
-import com.habitrpg.android.habitica.ui.helpers.bindView
 import java.text.DateFormat
 import java.util.*
 
@@ -24,10 +28,16 @@ import java.util.*
 class ReminderItemFormView @JvmOverloads constructor(
         context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : LinearLayout(context, attrs, defStyleAttr), TimePickerDialog.OnTimeSetListener, DatePickerDialog.OnDateSetListener {
-
-
-    private val button: ImageButton by bindView(R.id.button)
-    private val textView: TextView by bindView(R.id.text_view)
+    private val formattedTime: CharSequence?
+    get() {
+        val time = item.time
+        return if (time != null) {
+            formatter.format(time)
+        } else {
+            ""
+        }
+    }
+    private val binding = TaskFormReminderItemBinding.inflate(context.layoutInflater, this)
 
     private val formatter: DateFormat
         get() {
@@ -42,46 +52,54 @@ class ReminderItemFormView @JvmOverloads constructor(
     var item: RemindersItem = RemindersItem()
         set(value) {
             field = value
-            textView.text = formatter.format(item.time)
+            binding.textView.text = formattedTime
         }
 
-    var tintColor: Int = ContextCompat.getColor(context, R.color.brand_300)
+    var firstDayOfWeek: Int? = null
+
+    var tintColor: Int = context.getThemeColor(R.attr.taskFormTint)
     var valueChangedListener: ((Date) -> Unit)? = null
     var animDuration = 0L
     var isAddButton: Boolean = true
         set(value) {
             field = value
-            textView.text = if (value) context.getString(R.string.new_reminder) else formatter.format(item.time)
+            binding.textView.text = if (value) context.getString(R.string.new_reminder) else formattedTime
             if (value) {
                 val rotate = RotateAnimation(135f, 0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f)
                 rotate.duration = animDuration
                 rotate.interpolator = LinearInterpolator()
                 rotate.fillAfter = true
-                button.startAnimation(rotate)
+                binding.button.startAnimation(rotate)
+                // This button is not clickable in this state, so make screen readers skip it.
+                binding.button.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             } else {
                 val rotate = RotateAnimation(0f, 135f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f)
                 rotate.duration = animDuration
                 rotate.interpolator = LinearInterpolator()
                 rotate.fillAfter = true
-                button.startAnimation(rotate)
+                binding.button.startAnimation(rotate)
+                // This button IS now clickable, so allow screen readers to focus it.
+                binding.button.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
             }
         }
 
     init {
         minimumHeight = 38.dpToPx(context)
-        inflate(R.layout.task_form_reminder_item, true)
-        background = context.getDrawable(R.drawable.layout_rounded_bg_task_form)
+        background = ContextCompat.getDrawable(context, R.drawable.layout_rounded_bg_task_form)
         background.mutate().setTint(ContextCompat.getColor(context, R.color.taskform_gray))
         gravity = Gravity.CENTER_VERTICAL
 
-        button.setOnClickListener {
+        binding.button.setOnClickListener {
             if (!isAddButton) {
                 (parent as? ViewGroup)?.removeView(this)
             }
         }
-        button.drawable.mutate().setTint(tintColor)
+        // It's ok to make the description always be 'Delete Reminder' because when this button is
+        // a plus button we set it as 'unimportant for accessibility' so it can't be focused.
+        binding.button.contentDescription = context.getString(R.string.delete_reminder)
+        binding.button.drawable.mutate().setTint(tintColor)
 
-        textView.setOnClickListener {
+        binding.textView.setOnClickListener {
             val calendar = Calendar.getInstance()
             item.time?.let { calendar.time = it }
             if (taskType == Task.TYPE_DAILY) {
@@ -95,9 +113,13 @@ class ReminderItemFormView @JvmOverloads constructor(
                         calendar.get(Calendar.YEAR),
                         calendar.get(Calendar.MONTH),
                         calendar.get(Calendar.DAY_OF_MONTH))
+                if ((firstDayOfWeek ?: -1) >= 0) {
+                    timePickerDialog.datePicker.firstDayOfWeek = firstDayOfWeek ?: 0
+                }
                 timePickerDialog.show()
             }
         }
+        binding.textView.labelFor = binding.button.id
     }
     override fun onTimeSet(view: TimePicker?, hourOfDay: Int, minute: Int) {
         valueChangedListener?.let {
@@ -106,7 +128,7 @@ class ReminderItemFormView @JvmOverloads constructor(
             calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
             calendar.set(Calendar.MINUTE, minute)
             item.time = calendar.time
-            textView.text = formatter.format(item.time)
+            binding.textView.text = formattedTime
             item.time?.let { date -> it(date) }
         }
     }
@@ -119,7 +141,7 @@ class ReminderItemFormView @JvmOverloads constructor(
             calendar.set(Calendar.MONTH, month)
             calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
             item.time = calendar.time
-            textView.text = formatter.format(item.time)
+            binding.textView.text = formattedTime
             item.time?.let { date -> it(date) }
 
             val timePickerDialog = TimePickerDialog(context, this,

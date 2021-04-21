@@ -4,14 +4,23 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
 import androidx.recyclerview.widget.RecyclerView
 import com.habitrpg.android.habitica.R
+import com.habitrpg.android.habitica.extensions.dpToPx
 import com.habitrpg.android.habitica.extensions.inflate
-import com.habitrpg.android.habitica.ui.helpers.bindOptionalView
+import com.habitrpg.android.habitica.models.TeamPlan
+import com.habitrpg.android.habitica.models.promotions.HabiticaPromotion
+import com.habitrpg.android.habitica.ui.fragments.NavigationDrawerFragment
 import com.habitrpg.android.habitica.ui.menu.HabiticaDrawerItem
-import io.reactivex.BackpressureStrategy
-import io.reactivex.Flowable
-import io.reactivex.subjects.PublishSubject
+import com.habitrpg.android.habitica.ui.views.adventureGuide.AdventureGuideMenuBanner
+import com.habitrpg.android.habitica.ui.views.promo.PromoMenuView
+import com.habitrpg.android.habitica.ui.views.promo.PromoMenuViewHolder
+import com.habitrpg.android.habitica.ui.views.promo.SubscriptionBuyGemsPromoView
+import com.habitrpg.android.habitica.ui.views.promo.SubscriptionBuyGemsPromoViewHolder
+import io.reactivex.rxjava3.core.BackpressureStrategy
+import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.subjects.PublishSubject
 
 
 class NavigationDrawerAdapter(tintColor: Int, backgroundTintColor: Int): RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -36,23 +45,20 @@ class NavigationDrawerAdapter(tintColor: Int, backgroundTintColor: Int): Recycle
             notifyDataSetChanged()
         }
 
-    private val itemSelectedEvents = PublishSubject.create<Int>()
+    private val itemSelectedEvents = PublishSubject.create<HabiticaDrawerItem>()
 
+    var activePromo: HabiticaPromotion? = null
 
-    fun getItemSelectionEvents(): Flowable<Int> = itemSelectedEvents.toFlowable(BackpressureStrategy.DROP)
+    fun getItemSelectionEvents(): Flowable<HabiticaDrawerItem> = itemSelectedEvents.toFlowable(BackpressureStrategy.DROP)
 
-    fun getItemWithTransitionId(transitionId: Int): HabiticaDrawerItem? =
-            items.find { it.transitionId == transitionId }
     fun getItemWithIdentifier(identifier: String): HabiticaDrawerItem? =
             items.find { it.identifier == identifier }
 
-    private fun getItemPosition(transitionId: Int): Int =
-            items.indexOfFirst { it.transitionId == transitionId }
     private fun getItemPosition(identifier: String): Int =
             items.indexOfFirst { it.identifier == identifier }
 
     fun updateItem(item: HabiticaDrawerItem) {
-        val position = getItemPosition(item.transitionId)
+        val position = getItemPosition(item.identifier)
         items[position] = item
         notifyDataSetChanged()
     }
@@ -63,17 +69,53 @@ class NavigationDrawerAdapter(tintColor: Int, backgroundTintColor: Int): Recycle
         notifyDataSetChanged()
     }
 
+    fun setTeams(teams: List<TeamPlan>) {
+        var teamHeaderIndex = -1
+        var nextHeaderIndex = -1
+        for ((index, item) in items.withIndex()) {
+            if (teamHeaderIndex != -1 && item.isHeader) {
+                nextHeaderIndex = index
+                break
+            } else if (item.identifier == NavigationDrawerFragment.SIDEBAR_TEAMS) {
+                teamHeaderIndex = index
+            }
+        }
+        if (teamHeaderIndex != -1 && nextHeaderIndex != -1) {
+            for (x in nextHeaderIndex-1 downTo teamHeaderIndex+1) {
+                items.removeAt(x)
+            }
+            for ((index, team) in teams.withIndex()) {
+                val item = HabiticaDrawerItem(R.id.teamBoardFragment, team.id, team.summary)
+                item.bundle = bundleOf(Pair("teamID", team.id))
+                items.add(teamHeaderIndex + index + 1, item)
+            }
+        }
+        notifyDataSetChanged()
+    }
+
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val drawerItem = getItem(position)
-        if (getItemViewType(position) == 0) {
-            val itemHolder = holder as? DrawerItemViewHolder
-            itemHolder?.tintColor = tintColor
-            itemHolder?.backgroundTintColor = backgroundTintColor
-            itemHolder?.bind(drawerItem, drawerItem.transitionId == selectedItem)
-            itemHolder?.itemView?.setOnClickListener { itemSelectedEvents.onNext(drawerItem.transitionId) }
-        } else {
-            (holder as? SectionHeaderViewHolder)?.backgroundTintColor = backgroundTintColor
-            (holder as? SectionHeaderViewHolder)?.bind(drawerItem)
+        when {
+            getItemViewType(position) == 0 -> {
+                val itemHolder = holder as? DrawerItemViewHolder
+                itemHolder?.tintColor = tintColor
+                itemHolder?.backgroundTintColor = backgroundTintColor
+                itemHolder?.bind(drawerItem, drawerItem.transitionId == selectedItem)
+                itemHolder?.itemView?.setOnClickListener { itemSelectedEvents.onNext(drawerItem) }
+            }
+            getItemViewType(position) == 1 -> {
+                (holder as? SectionHeaderViewHolder)?.backgroundTintColor = backgroundTintColor
+                (holder as? SectionHeaderViewHolder)?.bind(drawerItem)
+            }
+            getItemViewType(position) == 4 -> {
+                drawerItem.user?.let { (holder.itemView as? AdventureGuideMenuBanner)?.updateData(it) }
+                holder.itemView.setOnClickListener { itemSelectedEvents.onNext(drawerItem) }
+            }
+            getItemViewType(position) == 5 -> {
+                activePromo?.let { promo ->
+                    (holder as? PromoMenuViewHolder)?.bind(promo)
+                }
+            }
         }
     }
 
@@ -81,13 +123,42 @@ class NavigationDrawerAdapter(tintColor: Int, backgroundTintColor: Int): Recycle
 
     override fun getItemCount(): Int = items.count { it.isVisible }
 
-    override fun getItemViewType(position: Int): Int = if (getItem(position).isHeader) 1 else 0
+    override fun getItemViewType(position: Int): Int {
+        return if (getItem(position).isHeader) {
+            1
+        } else {
+            getItem(position).itemViewType ?: 0
+        }
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        return if (viewType == 0) {
-            DrawerItemViewHolder(parent.inflate(R.layout.drawer_main_item))
-        } else {
-            SectionHeaderViewHolder(parent.inflate(R.layout.drawer_main_section_header))
+        return when (viewType) {
+            2 -> {
+                val itemView = SubscriptionBuyGemsPromoView(parent.context)
+                itemView.layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        148.dpToPx(parent.context)
+                )
+                SubscriptionBuyGemsPromoViewHolder(itemView)
+            }
+            4 -> {
+                val itemView = AdventureGuideMenuBanner(parent.context)
+                itemView.layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        104.dpToPx(parent.context)
+                )
+                SubscriptionBuyGemsPromoViewHolder(itemView)
+            }
+            5 -> {
+                val promoView = PromoMenuView(parent.context)
+                promoView.layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        148.dpToPx(parent.context)
+                )
+                PromoMenuViewHolder(promoView)
+            }
+            1 -> SectionHeaderViewHolder(parent.inflate(R.layout.drawer_main_section_header))
+            else -> DrawerItemViewHolder(parent.inflate(R.layout.drawer_main_item))
         }
     }
 
@@ -96,51 +167,50 @@ class NavigationDrawerAdapter(tintColor: Int, backgroundTintColor: Int): Recycle
         var tintColor: Int = 0
         var backgroundTintColor: Int = 0
 
-        private val titleTextView: TextView? by bindOptionalView(itemView, R.id.titleTextView)
-        private val pillView: TextView? by bindOptionalView(itemView, R.id.pillView)
-        private val additionalInfoView: TextView? by bindOptionalView(itemView, R.id.additionalInfoView)
+        private val titleTextView: TextView? = itemView.findViewById(R.id.titleTextView)
+        private val pillView: TextView? = itemView.findViewById(R.id.pillView)
+        private val bubbleView: View? = itemView.findViewById(R.id.bubble_view)
+        private val additionalInfoView: TextView? = itemView.findViewById(R.id.additionalInfoView)
 
         fun bind(drawerItem: HabiticaDrawerItem, isSelected: Boolean) {
             titleTextView?.text = drawerItem.text
 
             if (isSelected) {
-                itemView.setBackgroundColor(ContextCompat.getColor(itemView.context, R.color.gray_600))
+                itemView.setBackgroundColor(ContextCompat.getColor(itemView.context, R.color.content_background_offset))
+                itemView.background.alpha = 69
                 titleTextView?.setTextColor(tintColor)
             } else {
-                itemView.setBackgroundColor(ContextCompat.getColor(itemView.context, R.color.white))
-                titleTextView?.setTextColor(ContextCompat.getColor(itemView.context, R.color.gray_10))
+                itemView.setBackgroundColor(ContextCompat.getColor(itemView.context, R.color.content_background))
+                titleTextView?.setTextColor(ContextCompat.getColor(itemView.context, R.color.text_primary))
             }
 
-            if (drawerItem.additionalInfo == null) {
-                pillView?.visibility = View.GONE
-                additionalInfoView?.visibility = View.GONE
-            } else {
-                if (drawerItem.additionalInfoAsPill) {
-                    additionalInfoView?.visibility = View.GONE
-                    val pillView = this.pillView
-                    if (pillView != null) {
-                        pillView.visibility = View.VISIBLE
-                        pillView.text = drawerItem.additionalInfo
+            if (drawerItem.pillText != null) {
+                pillView?.let { pillView ->
+                    pillView.visibility = View.VISIBLE
+                    pillView.text = drawerItem.pillText
 
-                        val pL = pillView.paddingLeft
-                        val pT = pillView.paddingTop
-                        val pR = pillView.paddingRight
-                        val pB = pillView.paddingBottom
+                    val pL = pillView.paddingLeft
+                    val pT = pillView.paddingTop
+                    val pR = pillView.paddingRight
+                    val pB = pillView.paddingBottom
 
-                        pillView.background = ContextCompat.getDrawable(itemView.context, R.drawable.pill_bg_purple_200)
-                        pillView.setTextColor(ContextCompat.getColor(itemView.context, R.color.white))
-                        pillView.setPadding(pL, pT, pR, pB)
-                    }
-                } else {
-                    pillView?.visibility = View.GONE
-                    val additionalInfoView = this.additionalInfoView
-                    if (additionalInfoView != null) {
-                        additionalInfoView.text = drawerItem.additionalInfo
-                        additionalInfoView.visibility = View.VISIBLE
-                        additionalInfoView.setTextColor(tintColor)
-                    }
+                    pillView.background = drawerItem.pillBackground ?: ContextCompat.getDrawable(itemView.context, R.drawable.pill_bg_purple_200)
+                    pillView.setTextColor(ContextCompat.getColor(itemView.context, R.color.white))
+                    pillView.setPadding(pL, pT, pR, pB)
                 }
+            } else {
+                pillView?.visibility = View.GONE
             }
+            if (drawerItem.subtitle != null){
+                additionalInfoView?.let { additionalInfoView ->
+                    additionalInfoView.text = drawerItem.subtitle
+                    additionalInfoView.visibility = View.VISIBLE
+                    additionalInfoView.setTextColor(drawerItem.subtitleTextColor ?: tintColor)
+                }
+            } else {
+                additionalInfoView?.visibility = View.GONE
+            }
+            bubbleView?.visibility = if (drawerItem.showBubble) View.VISIBLE else View.GONE
         }
     }
 

@@ -11,40 +11,45 @@ import androidx.fragment.app.FragmentStatePagerAdapter
 import com.habitrpg.android.habitica.R
 import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.ChallengeRepository
+import com.habitrpg.android.habitica.databinding.FragmentViewpagerBinding
 import com.habitrpg.android.habitica.ui.activities.ChallengeFormActivity
 import com.habitrpg.android.habitica.ui.fragments.BaseMainFragment
-import com.habitrpg.android.habitica.ui.helpers.bindView
-import com.habitrpg.android.habitica.ui.helpers.resetViews
 import javax.inject.Inject
 
-class ChallengesOverviewFragment : BaseMainFragment() {
+class ChallengesOverviewFragment : BaseMainFragment<FragmentViewpagerBinding>() {
 
     @Inject
     internal lateinit var challengeRepository: ChallengeRepository
 
-    private val viewPager: androidx.viewpager.widget.ViewPager? by bindView(R.id.viewPager)
-    var statePagerAdapter: FragmentStatePagerAdapter? = null
+    override var binding: FragmentViewpagerBinding? = null
+
+    override fun createBinding(inflater: LayoutInflater, container: ViewGroup?): FragmentViewpagerBinding {
+        return FragmentViewpagerBinding.inflate(inflater, container, false)
+    }
+
+    private var statePagerAdapter: FragmentStatePagerAdapter? = null
     private var userChallengesFragment: ChallengeListFragment? = ChallengeListFragment()
     private var availableChallengesFragment: ChallengeListFragment? = ChallengeListFragment()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         this.usesTabLayout = true
-        super.onCreateView(inflater, container, savedInstanceState)
-        return inflater.inflate(R.layout.fragment_viewpager, container, false)
+        this.hidesToolbar = true
+        return super.onCreateView(inflater, container, savedInstanceState)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        resetViews()
-
-        userChallengesFragment?.user = this.user
         userChallengesFragment?.setViewUserChallengesOnly(true)
 
-        availableChallengesFragment?.user = this.user
         availableChallengesFragment?.setViewUserChallengesOnly(false)
         setViewPagerAdapter()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        getActiveFragment()?.retrieveChallengesPage()
     }
 
     override fun onDestroy() {
@@ -72,12 +77,7 @@ class ChallengesOverviewFragment : BaseMainFragment() {
 
     @Suppress("ReturnCount")
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        val id = item.itemId
-
-        when (id) {
+        when (item.itemId) {
             R.id.action_create_challenge -> {
                 val intent = Intent(getActivity(), ChallengeFormActivity::class.java)
                 startActivity(intent)
@@ -97,7 +97,7 @@ class ChallengesOverviewFragment : BaseMainFragment() {
     }
 
     private fun getActiveFragment(): ChallengeListFragment? {
-        return if (viewPager?.currentItem == 0) {
+        return if (binding?.viewPager?.currentItem == 0) {
             userChallengesFragment
         } else {
             availableChallengesFragment
@@ -107,7 +107,7 @@ class ChallengesOverviewFragment : BaseMainFragment() {
     private fun setViewPagerAdapter() {
         val fragmentManager = childFragmentManager
 
-        statePagerAdapter = object : FragmentStatePagerAdapter(fragmentManager) {
+        statePagerAdapter = object : FragmentStatePagerAdapter(fragmentManager, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
 
             override fun getItem(position: Int): Fragment {
                 return if (position == 0) {
@@ -129,9 +129,8 @@ class ChallengesOverviewFragment : BaseMainFragment() {
                 }
             }
         }
-        viewPager?.adapter = statePagerAdapter
-        tabLayout?.setupWithViewPager(viewPager)
+        binding?.viewPager?.adapter = statePagerAdapter
+        tabLayout?.setupWithViewPager(binding?.viewPager)
         statePagerAdapter?.notifyDataSetChanged()
     }
-
 }

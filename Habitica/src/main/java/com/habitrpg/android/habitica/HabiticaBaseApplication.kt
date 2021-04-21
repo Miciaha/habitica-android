@@ -1,5 +1,6 @@
 package com.habitrpg.android.habitica
 
+import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -8,17 +9,16 @@ import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.database.DatabaseErrorHandler
 import android.database.sqlite.SQLiteDatabase
-import android.preference.PreferenceManager
 import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.edit
-import androidx.multidex.MultiDexApplication
+import androidx.preference.PreferenceManager
 import com.amplitude.api.Amplitude
 import com.amplitude.api.Identify
 import com.facebook.drawee.backends.pipeline.Fresco
 import com.facebook.imagepipeline.core.ImagePipelineConfig
 import com.google.firebase.analytics.FirebaseAnalytics
-import com.google.firebase.iid.FirebaseInstanceId
+import com.google.firebase.installations.FirebaseInstallations
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings
 import com.habitrpg.android.habitica.api.HostConfig
@@ -31,9 +31,8 @@ import com.habitrpg.android.habitica.modules.UserRepositoryModule
 import com.habitrpg.android.habitica.proxy.CrashlyticsProxy
 import com.habitrpg.android.habitica.ui.activities.IntroActivity
 import com.habitrpg.android.habitica.ui.activities.LoginActivity
+import com.habitrpg.android.habitica.ui.helpers.MarkdownParser
 import com.habitrpg.android.habitica.ui.views.HabiticaIconsHelper
-import com.squareup.leakcanary.LeakCanary
-import com.squareup.leakcanary.RefWatcher
 import io.realm.Realm
 import io.realm.RealmConfiguration
 import org.solovyev.android.checkout.Billing
@@ -43,8 +42,7 @@ import org.solovyev.android.checkout.PurchaseVerifier
 import javax.inject.Inject
 
 //contains all HabiticaApplicationLogic except dagger componentInitialisation
-abstract class HabiticaBaseApplication : MultiDexApplication() {
-    var refWatcher: RefWatcher? = null
+abstract class HabiticaBaseApplication : Application() {
     @Inject
     internal lateinit var lazyApiHelper: ApiClient
     @Inject
@@ -68,25 +66,22 @@ abstract class HabiticaBaseApplication : MultiDexApplication() {
 
     override fun onCreate() {
         super.onCreate()
-        if (LeakCanary.isInAnalyzerProcess(this)) {
-            // This process is dedicated to LeakCanary for heap analysis.
-            // You should not init your app in this process.
-            return
-        }
         setupRealm()
         setupDagger()
         setupRemoteConfig()
         setupNotifications()
-        refWatcher = LeakCanary.install(this)
         createBillingAndCheckout()
         HabiticaIconsHelper.init(this)
+        MarkdownParser.setup(this)
 
         AppCompatDelegate.setCompatVectorFromResourcesEnabled(true)
 
         if (!BuildConfig.DEBUG) {
             try {
                 Amplitude.getInstance().initialize(this, getString(R.string.amplitude_app_id)).enableForegroundTracking(this)
-                val identify = Identify().setOnce("androidStore", BuildConfig.STORE)
+                val identify = Identify()
+                        .setOnce("androidStore", BuildConfig.STORE)
+                        .set("launch_screen", sharedPrefs.getString("launch_screen", ""))
                 Amplitude.getInstance().identify(identify)
             } catch (ignored: Resources.NotFoundException) {
             }
@@ -109,6 +104,7 @@ abstract class HabiticaBaseApplication : MultiDexApplication() {
         val builder = RealmConfiguration.Builder()
                 .schemaVersion(1)
                 .deleteRealmIfMigrationNeeded()
+                .allowWritesOnUiThread(true)
         try {
             Realm.setDefaultConfiguration(builder.build())
         } catch (ignored: UnsatisfiedLinkError) {
@@ -176,7 +172,7 @@ abstract class HabiticaBaseApplication : MultiDexApplication() {
                 return "DONT-NEED-IT"
             }
 
-            override fun getCache(): Cache? {
+            override fun getCache(): Cache {
                 return Billing.newCache()
             }
 
@@ -191,25 +187,20 @@ abstract class HabiticaBaseApplication : MultiDexApplication() {
     private fun setupRemoteConfig() {
         val remoteConfig = FirebaseRemoteConfig.getInstance()
         val configSettings = FirebaseRemoteConfigSettings.Builder()
-                .setDeveloperModeEnabled(BuildConfig.DEBUG)
                 .setMinimumFetchIntervalInSeconds(if (BuildConfig.DEBUG) 0 else 3600)
                 .build()
-        remoteConfig.setConfigSettings(configSettings)
-        remoteConfig.setDefaults(R.xml.remote_config_defaults)
+        remoteConfig.setConfigSettingsAsync(configSettings)
+        remoteConfig.setDefaultsAsync(R.xml.remote_config_defaults)
         remoteConfig.fetchAndActivate()
     }
 
     private fun setupNotifications() {
-        FirebaseInstanceId.getInstance().instanceId.addOnCompleteListener { task ->
+        FirebaseInstallations.getInstance().id.addOnCompleteListener { task ->
             if (!task.isSuccessful) {
                 Log.w("Token", "getInstanceId failed", task.exception)
                 return@addOnCompleteListener
             }
-
-            // Get new Instance ID token
-            val token = task.result?.token
-
-            // Log and toast
+            val token = task.result
             if (BuildConfig.DEBUG) {
                 Log.d("Token", "Firebase Notification Token: $token")
             }
@@ -234,10 +225,14 @@ abstract class HabiticaBaseApplication : MultiDexApplication() {
             val preferences = PreferenceManager.getDefaultSharedPreferences(context)
             val useReminder = preferences.getBoolean("use_reminder", false)
             val reminderTime = preferences.getString("reminder_time", "19:00")
+            val lightMode = preferences.getString("theme_mode", "system")
+            val launchScreen = preferences.getString("launch_screen", "")
             preferences.edit {
                 clear()
                 putBoolean("use_reminder", useReminder)
                 putString("reminder_time", reminderTime)
+                putString("theme_mode", lightMode)
+                putString("launch_screen", launchScreen)
             }
             reloadUserComponent()
             getInstance(context)?.lazyApiHelper?.updateAuthenticationCredentials(null, null)
@@ -251,7 +246,6 @@ abstract class HabiticaBaseApplication : MultiDexApplication() {
         fun checkUserAuthentication(context: Context, hostConfig: HostConfig?): Boolean {
             if (hostConfig?.apiKey == null || hostConfig.apiKey == "" || hostConfig.userID == "") {
                 startActivity(IntroActivity::class.java, context)
-
                 return false
             }
 

@@ -5,12 +5,10 @@ import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceScreen
 import com.habitrpg.android.habitica.R
 import com.habitrpg.android.habitica.components.UserComponent
-import com.habitrpg.android.habitica.ui.fragments.preferences.APIPreferenceFragment
-import com.habitrpg.android.habitica.ui.fragments.preferences.AuthenticationPreferenceFragment
-import com.habitrpg.android.habitica.ui.fragments.preferences.PreferencesFragment
-import com.habitrpg.android.habitica.ui.fragments.preferences.ProfilePreferencesFragment
-import com.habitrpg.android.habitica.ui.fragments.preferences.PushNotificationsPreferencesFragment
-import kotlinx.android.synthetic.main.activity_prefs.*
+import com.habitrpg.android.habitica.events.ShowSnackbarEvent
+import com.habitrpg.android.habitica.ui.fragments.preferences.*
+import com.habitrpg.android.habitica.ui.views.HabiticaSnackbar
+import org.greenrobot.eventbus.Subscribe
 
 class PrefsActivity : BaseActivity(), PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
 
@@ -19,7 +17,7 @@ class PrefsActivity : BaseActivity(), PreferenceFragmentCompat.OnPreferenceStart
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setupToolbar(toolbar)
+        setupToolbar(findViewById(R.id.toolbar))
 
         supportFragmentManager.beginTransaction()
                 .add(R.id.fragment_container, PreferencesFragment())
@@ -54,12 +52,18 @@ class PrefsActivity : BaseActivity(), PreferenceFragmentCompat.OnPreferenceStart
         return false
     }
 
+    @Subscribe
+    fun showSnackBarEvent(event: ShowSnackbarEvent) {
+        HabiticaSnackbar.showSnackbar(findViewById(R.id.snackbar_container), event.leftImage, event.title, event.text, event.specialView, event.rightIcon, event.rightTextColor, event.rightText, event.type)
+    }
+
     private fun createNextPage(preferenceScreen: PreferenceScreen): PreferenceFragmentCompat? =
             when (preferenceScreen.key) {
                 "profile" -> ProfilePreferencesFragment()
                 "authentication" -> AuthenticationPreferenceFragment()
                 "api" -> APIPreferenceFragment()
                 "pushNotifications" -> PushNotificationsPreferencesFragment()
+                "emailNotifications" -> EmailNotificationsPreferencesFragment()
                 else -> null
             }
 }

@@ -74,9 +74,6 @@
 -dontwarn javax.**
 -dontwarn io.realm.**
 
-#support library
--keep class android.support.v7.widget.SearchView { *; }
-
 #eventbus
 -keepclassmembers class ** {
     @org.greenrobot.eventbus.Subscribe <methods>;
@@ -152,9 +149,6 @@
 
 #checkout
 -keep class com.android.vending.billing.**
-
-#seeds sdk
--keep class com.playseeds.** { *; }
 
 -assumenosideeffects class org.solovyev.android.checkout.Billing {
     public static void debug(...);

@@ -13,44 +13,18 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             >
-            <androidx.cardview.widget.CardView
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                style="@style/CardView.Default"
+                style="@style/FlatCardView"
                 android:id="@+id/party_invitation_wrapper">
-                <LinearLayout
-                    android:orientation="vertical"
+
+                <com.habitrpg.android.habitica.ui.views.social.InvitationsView
+                    android:id="@+id/invitations_view"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    style="@style/CardContent">
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/invited_to_party" />
-                    <LinearLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_gravity="right">
-
-                        <Button
-                            android:id="@+id/party_invite_accept_button"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/quest.accept"
-                            android:textColor="@color/btn_success"
-                            style="?android:buttonBarButtonStyle" />
-
-                        <Button
-                            android:id="@+id/party_invite_reject_button"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/quest.reject"
-                            android:textColor="@color/btn_danger"
-                            style="?android:buttonBarButtonStyle" />
-                    </LinearLayout>
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
+                    android:layout_height="wrap_content"
+                    style="@style/CardContent" />
+            </FrameLayout>
 
             <TextView
                 android:id="@+id/title_view"
@@ -64,7 +38,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="@color/white"
+                android:background="?attr/colorContentBackground"
                 android:showDividers="beginning|end|middle"
                 android:divider="@drawable/vertical_divider">
                 <LinearLayout
@@ -86,7 +60,7 @@
                         android:id="@+id/quest_detail_button"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/layout_rounded_bg_gray_700"
+                        android:background="@drawable/layout_rounded_bg_window"
                         android:padding="@dimen/spacing_medium"
                         android:gravity="center_vertical"
                         android:layout_marginBottom="@dimen/spacing_medium"
@@ -100,7 +74,7 @@
                             android:layout_weight="1"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:paddingLeft="@dimen/spacing_medium">
+                            android:paddingStart="@dimen/spacing_medium">
                             <TextView
                                 android:id="@+id/quest_title_view"
                                 android:layout_width="match_parent"
@@ -112,8 +86,7 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 tools:text="3 Participants"
-                                android:textColor="@color/gray_300"
-                                android:visibility="gone"/>
+                                android:textColor="@color/text_quad" />
                         </LinearLayout>
                         <ImageView
                             android:layout_width="wrap_content"
@@ -125,7 +98,7 @@
                         android:id="@+id/quest_image_wrapper"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/layout_rounded_bg_gray_700"
+                        android:background="@drawable/layout_rounded_bg_window"
                         android:padding="@dimen/spacing_medium"
                         android:layout_marginBottom="@dimen/spacing_medium">
                         <com.habitrpg.android.habitica.ui.views.WrapContentDraweeView
@@ -145,6 +118,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
+                        android:gravity="center_vertical"
                         android:visibility="gone">
 
                         <Button
@@ -152,16 +126,16 @@
                             android:layout_width="0dp"
                             android:layout_weight="1"
                             android:layout_height="wrap_content"
-                            android:text="@string/quest.accept"
+                            android:text="@string/quest_accept"
                             style="@style/HabiticaButton.Green"
-                            android:layout_marginRight="16dp" />
+                            android:layout_marginEnd="16dp" />
 
                         <Button
                             android:id="@+id/quest_reject_button"
                             android:layout_width="0dp"
                             android:layout_weight="1"
                             android:layout_height="wrap_content"
-                            android:text="@string/quest.reject"
+                            android:text="@string/quest_reject"
                             style="@style/HabiticaButton.Red"/>
                     </LinearLayout>
                     <LinearLayout
@@ -175,16 +149,16 @@
                             android:layout_width="0dp"
                             android:layout_weight="1"
                             android:layout_height="wrap_content"
-                            android:text="@string/quest.begin"
+                            android:text="@string/quest_begin"
                             style="@style/HabiticaButton.Yellow"
-                            android:layout_marginRight="16dp" />
+                            android:layout_marginEnd="16dp" />
 
                         <Button
                             android:id="@+id/quest_cancel_button"
                             android:layout_width="0dp"
                             android:layout_weight="1"
                             android:layout_height="wrap_content"
-                            android:text="@string/quest.cancel"
+                            android:text="@string/quest_cancel"
                             style="@style/HabiticaButton.Red" />
                     </LinearLayout>
                     <LinearLayout

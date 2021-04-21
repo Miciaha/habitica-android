@@ -9,17 +9,14 @@ import com.habitrpg.android.habitica.models.members.Member
 import com.habitrpg.android.habitica.models.responses.*
 import com.habitrpg.android.habitica.models.shops.Shop
 import com.habitrpg.android.habitica.models.shops.ShopItem
-import com.habitrpg.android.habitica.models.social.Challenge
-import com.habitrpg.android.habitica.models.social.ChatMessage
-import com.habitrpg.android.habitica.models.social.FindUsernameResult
-import com.habitrpg.android.habitica.models.social.Group
+import com.habitrpg.android.habitica.models.social.*
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.models.tasks.TaskList
 import com.habitrpg.android.habitica.models.user.Items
 import com.habitrpg.android.habitica.models.user.Stats
 import com.habitrpg.android.habitica.models.user.User
-import io.reactivex.Flowable
-import io.reactivex.FlowableTransformer
+import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.core.FlowableTransformer
 import retrofit2.HttpException
 
 
@@ -55,17 +52,19 @@ interface ApiClient {
 
     fun equipItem(type: String, itemKey: String): Flowable<Items>
 
-    fun buyItem(itemKey: String): Flowable<BuyResponse>
+    fun buyItem(itemKey: String, purchaseQuantity: Int): Flowable<BuyResponse>
 
-    fun purchaseItem(type: String, itemKey: String): Flowable<Any>
+    fun purchaseItem(type: String, itemKey: String, purchaseQuantity: Int): Flowable<Void>
 
-    fun purchaseHourglassItem(type: String, itemKey: String): Flowable<Any>
+    fun purchaseHourglassItem(type: String, itemKey: String): Flowable<Void>
 
-    fun purchaseMysterySet(itemKey: String): Flowable<Any>
+    fun purchaseMysterySet(itemKey: String): Flowable<Void>
 
-    fun purchaseQuest(key: String): Flowable<Any>
+    fun purchaseQuest(key: String): Flowable<Void>
+    fun purchaseSpecialSpell(key: String): Flowable<Void>
     fun validateSubscription(request: SubscriptionValidationRequest): Flowable<Any>
     fun validateNoRenewSubscription(request: PurchaseValidationRequest): Flowable<Any>
+    fun cancelSubscription(): Flowable<Void>
 
     fun sellItem(itemType: String, itemKey: String): Flowable<User>
 
@@ -81,6 +80,7 @@ interface ApiClient {
     fun getTask(id: String): Flowable<Task>
 
     fun postTaskDirection(id: String, direction: String): Flowable<TaskDirectionData>
+    fun bulkScoreTasks(data: List<Map<String, String>>): Flowable<BulkTaskScoringData>
 
     fun postTaskNewPosition(id: String, position: Int): Flowable<List<String>>
 
@@ -106,6 +106,8 @@ interface ApiClient {
     fun connectUser(username: String, password: String): Flowable<UserAuthResponse>
 
     fun connectSocial(network: String, userId: String, accessToken: String): Flowable<UserAuthResponse>
+    fun loginApple(authToken: String): Flowable<UserAuthResponse>
+
     fun sleep(): Flowable<Boolean>
 
     fun revive(): Flowable<User>
@@ -129,13 +131,14 @@ interface ApiClient {
     fun getGroup(groupId: String): Flowable<Group>
 
     fun createGroup(group: Group): Flowable<Group>
-    fun updateGroup(id: String, item: Group): Flowable<Void>
+    fun updateGroup(id: String, item: Group): Flowable<Group>
+    fun removeMemberFromGroup(groupID: String, userID: String): Flowable<Void>
 
     fun listGroupChat(groupId: String): Flowable<List<ChatMessage>>
 
     fun joinGroup(groupId: String): Flowable<Group>
 
-    fun leaveGroup(groupId: String): Flowable<Void>
+    fun leaveGroup(groupId: String, keepChallenges: String): Flowable<Void>
 
     fun postGroupChat(groupId: String, message: Map<String, String>): Flowable<PostChatMessageResult>
 
@@ -150,10 +153,11 @@ interface ApiClient {
     fun likeMessage(groupId: String, mid: String): Flowable<ChatMessage>
 
     fun flagMessage(groupId: String, mid: String, data: MutableMap<String, String>): Flowable<Void>
+    fun flagInboxMessage(mid: String, data: MutableMap<String, String>): Flowable<Void>
 
     fun seenMessages(groupId: String): Flowable<Void>
 
-    fun inviteToGroup(groupId: String, inviteData: Map<String, Any>): Flowable<List<String>>
+    fun inviteToGroup(groupId: String, inviteData: Map<String, Any>): Flowable<Void>
 
     fun rejectGroupInvite(groupId: String): Flowable<Void>
 
@@ -211,9 +215,9 @@ interface ApiClient {
     fun debugAddTenGems(): Flowable<Void>
 
     // Notifications
-    fun readNotification(notificationId: String): Flowable<List<*>>
-    fun readNotifications(notificationIds: Map<String, List<String>>): Flowable<List<*>>
-    fun seeNotifications(notificationIds: Map<String, List<String>>): Flowable<List<*>>
+    fun readNotification(notificationId: String): Flowable<List<Any>>
+    fun readNotifications(notificationIds: Map<String, List<String>>): Flowable<List<Any>>
+    fun seeNotifications(notificationIds: Map<String, List<String>>): Flowable<List<Any>>
 
     fun getErrorResponse(throwable: HttpException): ErrorResponse
 
@@ -222,13 +226,16 @@ interface ApiClient {
     fun hasAuthenticationKeys(): Boolean
 
     fun retrieveUser(withTasks: Boolean): Flowable<User>
-    fun retrieveInboxMessages(): Flowable<List<ChatMessage>>
+    fun retrieveInboxMessages(uuid: String, page: Int): Flowable<List<ChatMessage>>
+    fun retrieveInboxConversations(): Flowable<List<InboxConversation>>
 
     fun <T> configureApiCallObserver(): FlowableTransformer<HabitResponse<T>, T>
 
     fun openMysteryItem(): Flowable<Equipment>
 
     fun runCron(): Flowable<Void>
+
+    fun reroll(): Flowable<User>
 
     fun resetAccount(): Flowable<Void>
     fun deleteAccount(password: String): Flowable<Void>
@@ -252,4 +259,10 @@ interface ApiClient {
     fun verifyUsername(username: String): Flowable<VerifyUsernameResponse>
     fun updateServerUrl(newAddress: String?)
     fun findUsernames(username: String, context: String?, id: String?): Flowable<List<FindUsernameResult>>
+
+    fun transferGems(giftedID: String, amount: Int): Flowable<Void>
+    fun unlinkAllTasks(challengeID: String?, keepOption: String): Flowable<Void>
+    fun blockMember(userID: String): Flowable<List<String>>
+    fun getTeamPlans(): Flowable<List<TeamPlan>>
+    fun getTeamPlanTasks(teamID: String): Flowable<TaskList>
 }

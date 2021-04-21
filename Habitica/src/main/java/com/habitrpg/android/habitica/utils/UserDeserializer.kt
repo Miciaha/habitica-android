@@ -6,6 +6,7 @@ import com.google.gson.JsonDeserializer
 import com.google.gson.JsonElement
 import com.google.gson.JsonParseException
 import com.google.gson.reflect.TypeToken
+import com.habitrpg.android.habitica.extensions.getAsString
 import com.habitrpg.android.habitica.models.PushDevice
 import com.habitrpg.android.habitica.models.QuestAchievement
 import com.habitrpg.android.habitica.models.Tag
@@ -29,7 +30,10 @@ class UserDeserializer : JsonDeserializer<User> {
         val obj = json.asJsonObject
 
         if (obj.has("_id")) {
-            user.id = obj.get("_id").asString
+            user.id = obj.getAsString("_id")
+        }
+        if (obj.has("_v")) {
+            user.versionNumber = obj.get("_v").asInt
         }
 
         if (obj.has("balance")) {
@@ -48,14 +52,20 @@ class UserDeserializer : JsonDeserializer<User> {
             user.profile = context.deserialize(obj.get("profile"), Profile::class.java)
         }
         if (obj.has("party")) {
-            user.party = context.deserialize(obj.get("party"), UserParty::class.java)
+            val partyObj = obj.getAsJsonObject("party")
+            user.party = context.deserialize(partyObj, UserParty::class.java)
             if (user.party != null && user.party?.quest != null) {
                 user.party?.quest?.id = user.id
-                if (!obj.getAsJsonObject("party").getAsJsonObject("quest").has("RSVPNeeded")) {
+                if (!partyObj.getAsJsonObject("quest").has("RSVPNeeded")) {
                     val realm = Realm.getDefaultInstance()
                     val quest = realm.where(Quest::class.java).equalTo("id", user.id).findFirst()
                     if (quest != null && quest.isValid) {
                         user.party?.quest?.RSVPNeeded = quest.RSVPNeeded
+                    }
+                }
+                if (partyObj.getAsJsonObject("quest").has("completed")) {
+                    if (!partyObj.getAsJsonObject("quest").get("completed").isJsonNull) {
+                        user.party?.quest?.completed = obj.getAsJsonObject("party").getAsJsonObject("quest").get("completed").asString
                     }
                 }
             }
@@ -80,12 +90,24 @@ class UserDeserializer : JsonDeserializer<User> {
         }
         if (obj.has("auth")) {
             user.authentication = context.deserialize(obj.get("auth"), Authentication::class.java)
+            if (obj.getAsJsonObject("auth").has("facebook") && obj.getAsJsonObject("auth").getAsJsonObject("facebook").has("emails")) {
+                user.authentication?.hasFacebookAuth = true
+            }
+            if (obj.getAsJsonObject("auth").has("google") && obj.getAsJsonObject("auth").getAsJsonObject("google").has("emails")) {
+                user.authentication?.hasGoogleAuth = true
+            }
+            if (obj.getAsJsonObject("auth").has("apple") && obj.getAsJsonObject("auth").getAsJsonObject("apple").has("email")) {
+                user.authentication?.hasAppleAuth = true
+            }
         }
         if (obj.has("flags")) {
             user.flags = context.deserialize(obj.get("flags"), Flags::class.java)
         }
         if (obj.has("contributor")) {
             user.contributor = context.deserialize(obj.get("contributor"), ContributorInfo::class.java)
+        }
+        if (obj.has("backer")) {
+            user.backer = context.deserialize<Backer>(obj.get("backer"), Backer::class.java)
         }
         if (obj.has("invitations")) {
             user.invitations = context.deserialize(obj.get("invitations"), Invitations::class.java)
@@ -96,6 +118,22 @@ class UserDeserializer : JsonDeserializer<User> {
             }.type)
             for (tag in user.tags) {
                 tag.userId = user.id
+            }
+        }
+        if (obj.has("achievements")) {
+            val achievements = RealmList<UserAchievement>()
+            for (entry in obj.getAsJsonObject("achievements").entrySet()) {
+                if (!entry.value.isJsonPrimitive) {
+                    continue
+                }
+                val achievement = UserAchievement()
+                achievement.key = entry.key
+                achievement.earned = entry.value.asBoolean
+                achievements.add(achievement)
+            }
+            user.achievements = achievements
+            for (achievement in user.achievements) {
+                achievement.userId = user.id
             }
         }
         if (obj.has("tasksOrder")) {
@@ -140,6 +178,13 @@ class UserDeserializer : JsonDeserializer<User> {
                     questAchievements.add(questAchievement)
                 }
                 user.questAchievements = questAchievements
+            }
+            if (achievements.has("challenges")) {
+                val challengeAchievements = RealmList<String>()
+                for (entry in achievements.getAsJsonArray("challenges")) {
+                    challengeAchievements.add(entry.asString)
+                }
+                user.challengeAchievements = challengeAchievements
             }
         }
 

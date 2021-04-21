@@ -12,6 +12,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.UnsupportedEncodingException
+import java.lang.IllegalStateException
 import java.math.BigInteger
 import java.security.*
 import java.util.*
@@ -188,6 +189,8 @@ constructor(ctx: Context, var sharedPreferences: SharedPreferences, var keyStore
             null
         } catch (e: GeneralSecurityException) {
             null
+        } catch (e: IllegalStateException) {
+            null
         }
     }
 
@@ -202,7 +205,7 @@ constructor(ctx: Context, var sharedPreferences: SharedPreferences, var keyStore
                 putString(PUBLIC_IV, publicIV)
             }
         }
-        return publicIV
+        return publicIV ?: ""
     }
 
     companion object {

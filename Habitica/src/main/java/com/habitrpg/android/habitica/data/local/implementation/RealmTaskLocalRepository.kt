@@ -2,8 +2,10 @@ package com.habitrpg.android.habitica.data.local.implementation
 
 import com.habitrpg.android.habitica.data.local.TaskLocalRepository
 import com.habitrpg.android.habitica.models.tasks.*
-import io.reactivex.Flowable
-import io.reactivex.Maybe
+import com.habitrpg.android.habitica.models.user.User
+import hu.akarnokd.rxjava3.bridge.RxJavaBridge
+import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.core.Maybe
 import io.realm.Realm
 import io.realm.RealmObject
 import io.realm.RealmResults
@@ -12,46 +14,53 @@ import io.realm.Sort
 class RealmTaskLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm), TaskLocalRepository {
 
     override fun getTasks(taskType: String, userID: String): Flowable<RealmResults<Task>> {
-        return realm.where(Task::class.java)
+        if (realm.isClosed) {
+            return Flowable.empty()
+        }
+        return RxJavaBridge.toV3Flowable(realm.where(Task::class.java)
                 .equalTo("type", taskType)
                 .equalTo("userId", userID)
                 .sort("position", Sort.ASCENDING, "dateCreated", Sort.DESCENDING)
                 .findAll()
                 .asFlowable()
-                .filter { it.isLoaded }
-                .retry(1)
+                .filter { it.isLoaded }).retry(1)
     }
 
     override fun getTasks(userId: String): Flowable<RealmResults<Task>> {
-        return realm.where(Task::class.java).equalTo("userId", userId)
+        if (realm.isClosed) {
+            return Flowable.empty()
+        }
+        return RxJavaBridge.toV3Flowable(realm.where(Task::class.java).equalTo("userId", userId)
                 .sort("position", Sort.ASCENDING, "dateCreated", Sort.DESCENDING)
                 .findAll()
                 .asFlowable()
-                .filter { it.isLoaded }
-    }
+                .filter { it.isLoaded })
+}
 
-    override fun saveTasks(userId: String, tasksOrder: TasksOrder, tasks: TaskList) {
+    override fun saveTasks(ownerID: String, tasksOrder: TasksOrder, tasks: TaskList) {
         val sortedTasks = ArrayList<Task>()
         sortedTasks.addAll(sortTasks(tasks.tasks, tasksOrder.habits))
         sortedTasks.addAll(sortTasks(tasks.tasks, tasksOrder.dailys))
         sortedTasks.addAll(sortTasks(tasks.tasks, tasksOrder.todos))
         sortedTasks.addAll(sortTasks(tasks.tasks, tasksOrder.rewards))
-        removeOldTasks(userId, sortedTasks)
+        removeOldTasks(ownerID, sortedTasks)
 
         val allChecklistItems = ArrayList<ChecklistItem>()
-        sortedTasks.forEach { it.checklist?.let { it1 -> allChecklistItems.addAll(it1) } }
+        val allReminders = ArrayList<RemindersItem>()
+        sortedTasks.forEach {
+            if (it.userId.isBlank()) it.userId = ownerID
+            it.checklist?.let { it1 -> allChecklistItems.addAll(it1) }
+            it.reminders?.let { it1 -> allReminders.addAll(it1) }
+        }
+        removeOldReminders(allReminders)
         removeOldChecklists(allChecklistItems)
 
-        val allReminders = ArrayList<RemindersItem>()
-        sortedTasks.forEach { it.reminders?.let { it1 -> allReminders.addAll(it1) } }
-        removeOldReminders(allReminders)
-
-        realm.executeTransactionAsync { realm1 -> realm1.insertOrUpdate(sortedTasks) }
+        executeTransaction { realm1 -> realm1.insertOrUpdate(sortedTasks) }
     }
 
     override fun saveCompletedTodos(userId: String, tasks: MutableCollection<Task>) {
         removeCompletedTodos(userId, tasks)
-        realm.executeTransactionAsync { realm1 -> realm1.insertOrUpdate(tasks) }
+        executeTransaction { realm1 -> realm1.insertOrUpdate(tasks) }
     }
 
     private fun sortTasks(taskMap: MutableMap<String, Task>, taskOrder: List<String>): List<Task> {
@@ -66,10 +75,16 @@ class RealmTaskLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm), 
                 taskMap.remove(taskId)
             }
         }
+        for (task in taskMap.values) {
+            task.position = position
+            taskList.add(task)
+            position++
+        }
         return taskList
     }
 
     private fun removeOldTasks(userID: String, onlineTaskList: List<Task>) {
+        if (realm.isClosed) return
         val localTasks = realm.where(Task::class.java)
                 .equalTo("userId", userID)
                 .beginGroup()
@@ -83,7 +98,7 @@ class RealmTaskLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm), 
                 .findAll()
                 .createSnapshot()
         val tasksToDelete = localTasks.filterNot { onlineTaskList.contains(it) }
-        realm.executeTransaction {
+        executeTransaction {
             for (localTask in tasksToDelete) {
                 localTask.checklist?.deleteAllFromRealm()
                 localTask.reminders?.deleteAllFromRealm()
@@ -100,7 +115,7 @@ class RealmTaskLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm), 
                 .findAll()
                 .createSnapshot()
         val tasksToDelete = localTasks.filterNot { onlineTaskList.contains(it) }
-        realm.executeTransaction {
+        executeTransaction {
             for (localTask in tasksToDelete) {
                 localTask.checklist?.deleteAllFromRealm()
                 localTask.reminders?.deleteAllFromRealm()
@@ -112,7 +127,7 @@ class RealmTaskLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm), 
     private fun removeOldChecklists(onlineItems: List<ChecklistItem>) {
         val localItems = realm.where(ChecklistItem::class.java).findAll().createSnapshot()
         val itemsToDelete = localItems.filterNot { onlineItems.contains(it) }
-        realm.executeTransaction {
+        executeTransaction {
             for (item in itemsToDelete) {
                 item.deleteFromRealm()
             }
@@ -122,7 +137,7 @@ class RealmTaskLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm), 
     private fun removeOldReminders(onlineReminders: List<RemindersItem>) {
         val localReminders = realm.where(RemindersItem::class.java).findAll().createSnapshot()
         val itemsToDelete = localReminders.filterNot { onlineReminders.contains(it) }
-        realm.executeTransaction {
+        executeTransaction {
             for (item in itemsToDelete) {
                 item.deleteFromRealm()
             }
@@ -131,7 +146,7 @@ class RealmTaskLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm), 
 
     override fun deleteTask(taskID: String) {
         val task = realm.where(Task::class.java).equalTo("id", taskID).findFirstAsync()
-        realm.executeTransaction {
+        executeTransaction {
             if (task.isManaged) {
                 task.deleteFromRealm()
             }
@@ -139,9 +154,12 @@ class RealmTaskLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm), 
     }
 
     override fun getTask(taskId: String): Flowable<Task> {
-        return realm.where(Task::class.java).equalTo("id", taskId).findFirstAsync().asFlowable<RealmObject>()
+        if (realm.isClosed) {
+            return Flowable.empty()
+        }
+        return RxJavaBridge.toV3Flowable(realm.where(Task::class.java).equalTo("id", taskId).findFirstAsync().asFlowable<RealmObject>()
                 .filter { realmObject -> realmObject.isLoaded }
-                .cast(Task::class.java)
+                .cast(Task::class.java))
     }
 
     override fun getTaskCopy(taskId: String): Flowable<Task> {
@@ -157,18 +175,18 @@ class RealmTaskLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm), 
 
     override fun markTaskCompleted(taskId: String, isCompleted: Boolean) {
         val task = realm.where(Task::class.java).equalTo("id", taskId).findFirstAsync()
-        realm.executeTransaction { task.completed = true }
+        executeTransaction { task.completed = true }
     }
 
     override fun saveReminder(remindersItem: RemindersItem) {
-        realm.executeTransaction { it.insertOrUpdate(remindersItem) }
+        executeTransaction { it.insertOrUpdate(remindersItem) }
     }
 
     override fun swapTaskPosition(firstPosition: Int, secondPosition: Int) {
         val firstTask = realm.where(Task::class.java).equalTo("position", firstPosition).findFirst()
         val secondTask = realm.where(Task::class.java).equalTo("position", secondPosition).findFirst()
         if (firstTask != null && secondTask != null && firstTask.isValid && secondTask.isValid) {
-            realm.executeTransaction {
+            executeTransaction {
                 firstTask.position = secondPosition
                 secondTask.position = firstPosition
             }
@@ -176,9 +194,9 @@ class RealmTaskLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm), 
     }
 
     override fun getTaskAtPosition(taskType: String, position: Int): Flowable<Task> {
-        return realm.where(Task::class.java).equalTo("type", taskType).equalTo("position", position).findFirstAsync().asFlowable<RealmObject>()
+        return RxJavaBridge.toV3Flowable(realm.where(Task::class.java).equalTo("type", taskType).equalTo("position", position).findFirstAsync().asFlowable<RealmObject>()
                 .filter { realmObject -> realmObject.isLoaded }
-                .cast(Task::class.java)
+                .cast(Task::class.java))
     }
 
     override fun updateIsdue(daily: TaskList): Maybe<TaskList> {
@@ -195,19 +213,38 @@ class RealmTaskLocalRepository(realm: Realm) : RealmBaseLocalRepository(realm), 
     override fun updateTaskPositions(taskOrder: List<String>) {
         if (taskOrder.isNotEmpty()) {
             val tasks = realm.where(Task::class.java).`in`("id", taskOrder.toTypedArray()).findAll()
-            realm.executeTransaction { _ ->
+            executeTransaction { _ ->
                 tasks.filter { taskOrder.contains(it.id) }.forEach { it.position = taskOrder.indexOf(it.id) }
             }
         }
     }
 
     override fun getErroredTasks(userID: String): Flowable<RealmResults<Task>> {
-        return realm.where(Task::class.java)
+        return RxJavaBridge.toV3Flowable(realm.where(Task::class.java)
                 .equalTo("userId", userID)
                 .equalTo("hasErrored", true)
                 .sort("position")
                 .findAll()
                 .asFlowable()
-                .filter { it.isLoaded }
-                .retry(1)    }
+                .filter { it.isLoaded }).retry(1)
+    }
+
+    override fun getUser(userID: String): Flowable<User> {
+        return RxJavaBridge.toV3Flowable(realm.where(User::class.java)
+                .equalTo("id", userID)
+                .findAll()
+                .asFlowable()
+                .filter { realmObject -> realmObject.isLoaded && realmObject.isValid && !realmObject.isEmpty() }
+                .map { users -> users.first() })
+    }
+
+    override fun getTasksForChallenge(challengeID: String?, userID: String?): Flowable<RealmResults<Task>> {
+        return RxJavaBridge.toV3Flowable(realm.where(Task::class.java)
+                .equalTo("challengeID", challengeID)
+                .equalTo("userId", userID)
+                .findAll()
+                .asFlowable()
+                .filter { it.isLoaded })
+.retry(1)
+    }
 }

@@ -1,7 +1,6 @@
 package com.habitrpg.android.habitica.receivers
 
 import android.app.Notification
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -9,6 +8,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import com.habitrpg.android.habitica.HabiticaBaseApplication
@@ -18,12 +18,10 @@ import com.habitrpg.android.habitica.data.UserRepository
 import com.habitrpg.android.habitica.helpers.AmplitudeManager
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.helpers.TaskAlarmManager
-import com.habitrpg.android.habitica.helpers.notifications.createOrUpdateHabiticaChannel
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.models.user.User
 import com.habitrpg.android.habitica.ui.activities.MainActivity
-import io.reactivex.functions.BiFunction
-import io.reactivex.functions.Consumer
+import io.reactivex.rxjava3.functions.BiFunction
 import io.realm.RealmResults
 import java.util.*
 import javax.inject.Inject
@@ -66,7 +64,7 @@ class NotificationPublisher : BroadcastReceiver() {
         if (checkDailies) {
             taskRepository.getTasks(Task.TYPE_DAILY).firstElement().zipWith(userRepository.getUser().firstElement(), BiFunction<RealmResults<Task>, User, Pair<RealmResults<Task>, User>> { tasks, user ->
                 return@BiFunction Pair(tasks, user)
-            }).subscribe(Consumer { pair ->
+            }).subscribe({ pair ->
                 var showNotifications = false
                 for (task in pair.first) {
                     if (task?.checkIfDue() == true) {
@@ -85,12 +83,9 @@ class NotificationPublisher : BroadcastReceiver() {
     }
 
     private fun notify(intent: Intent, notification: Notification?) {
-        val notificationManager = context?.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            notificationManager?.createOrUpdateHabiticaChannel()
-        }
+        val notificationManager = context?.let { NotificationManagerCompat.from(it) }
         val id = intent.getIntExtra(NOTIFICATION_ID, 0)
-        notificationManager?.notify(id, notification)
+        notification?.let { notificationManager?.notify(id, it) }
     }
 
     private fun buildNotification(wasInactive: Boolean, registrationDate: Date? = null): Notification? {
@@ -134,15 +129,9 @@ class NotificationPublisher : BroadcastReceiver() {
                 notificationIntent, 0)
         builder.setContentIntent(intent)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            builder.color = ContextCompat.getColor(thisContext, R.color.brand_300)
-        }
+        builder.color = ContextCompat.getColor(thisContext, R.color.brand_300)
 
-        notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            builder.build()
-        } else {
-            builder.notification
-        }
+        notification = builder.build()
         notification.defaults = notification.defaults or Notification.DEFAULT_LIGHTS
 
         notification.flags = notification.flags or (Notification.FLAG_AUTO_CANCEL or Notification.FLAG_SHOW_LIGHTS)

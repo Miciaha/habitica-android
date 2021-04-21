@@ -22,6 +22,9 @@ import android.widget.ScrollView
 import androidx.core.content.ContextCompat
 import androidx.core.view.MotionEventCompat
 import com.habitrpg.android.habitica.R
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
 // Adapted from https://github.com/justasm/DragLinearLayout
 
@@ -74,11 +77,11 @@ open class DragLinearLayout @JvmOverloads constructor(context: Context, attrs: A
         fun onSwap(firstView: View?, firstPosition: Int, secondView: View, secondPosition: Int)
     }
 
-    private inner class DraggableChild {
+    private class DraggableChild {
         /**
          * If non-null, a reference to an on-going position animation.
          */
-        internal var swapAnimation: ValueAnimator? = null
+        var swapAnimation: ValueAnimator? = null
 
         fun endExistingAnimation() {
             swapAnimation?.end()
@@ -100,18 +103,18 @@ open class DragLinearLayout @JvmOverloads constructor(context: Context, attrs: A
      *  * if gesture ends without drag, or settling finishes, #stopDetecting - #detecting == false
      */
     private inner class DragItem {
-        internal var view: View? = null
+        var view: View? = null
         private var startVisibility: Int = 0
-        internal var viewDrawable: BitmapDrawable? = null
-        internal var position: Int = 0
-        internal var startTop: Int = 0
-        internal var height: Int = 0
-        internal var totalDragOffset: Int = 0
-        internal var targetTopOffset: Int = 0
-        internal var settleAnimation: ValueAnimator? = null
+        var viewDrawable: BitmapDrawable? = null
+        var position: Int = 0
+        var startTop: Int = 0
+        var height: Int = 0
+        var totalDragOffset: Int = 0
+        var targetTopOffset: Int = 0
+        var settleAnimation: ValueAnimator? = null
 
-        internal var detecting: Boolean = false
-        internal var dragging: Boolean = false
+        var detecting: Boolean = false
+        var dragging: Boolean = false
 
         init {
             stopDetecting()
@@ -198,34 +201,6 @@ open class DragLinearLayout @JvmOverloads constructor(context: Context, attrs: A
     }
 
     /**
-     * Calls [.addView] followed by [.setViewDraggable].
-     */
-    fun addDragView(child: View, dragHandle: View) {
-        addView(child)
-        setViewDraggable(child, dragHandle)
-    }
-
-    /**
-     * Calls [.addView] followed by
-     * [.setViewDraggable] and correctly updates the
-     * drag-ability state of all existing views.
-     */
-    fun addDragView(child: View, dragHandle: View, index: Int) {
-        addView(child, index)
-
-        // update drag-able children mappings
-        val numMappings = draggableChildren.size()
-        for (i in numMappings - 1 downTo 0) {
-            val key = draggableChildren.keyAt(i)
-            if (key >= index) {
-                draggableChildren.put(key + 1, draggableChildren.get(key))
-            }
-        }
-
-        setViewDraggable(child, dragHandle)
-    }
-
-    /**
      * Makes the child a candidate for dragging. Must be an existing child of this layout.
      */
     fun setViewDraggable(child: View, dragHandle: View) {
@@ -247,42 +222,9 @@ open class DragLinearLayout @JvmOverloads constructor(context: Context, attrs: A
         }
     }
 
-    /**
-     * Calls [.removeView] and correctly updates the drag-ability state of
-     * all remaining views.
-     */
-    fun removeDragView(child: View) {
-        if (this === child.parent) {
-            val index = indexOfChild(child)
-            removeView(child)
-
-            // update drag-able children mappings
-            val mappings = draggableChildren.size()
-            for (i in 0 until mappings) {
-                val key = draggableChildren.keyAt(i)
-                if (key >= index) {
-                    val next = draggableChildren.get(key + 1)
-                    if (null == next) {
-                        draggableChildren.delete(key)
-                    } else {
-                        draggableChildren.put(key, next)
-                    }
-                }
-            }
-        }
-    }
-
     override fun removeAllViews() {
         super.removeAllViews()
         draggableChildren.clear()
-    }
-
-    /**
-     * If this layout is within a [android.widget.ScrollView], register it here so that it
-     * can be scrolled during item drags.
-     */
-    fun setContainerScrollView(scrollView: ScrollView) {
-        this.containerScrollView = scrollView
     }
 
     /**
@@ -296,8 +238,7 @@ open class DragLinearLayout @JvmOverloads constructor(context: Context, attrs: A
      * A linear relationship b/w distance and duration, bounded.
      */
     private fun getTranslateAnimationDuration(distance: Float): Long {
-        return Math.min(MAX_SWITCH_DURATION, Math.max(MIN_SWITCH_DURATION,
-                (NOMINAL_SWITCH_DURATION * Math.abs(distance) / nominalDistanceScaled).toLong()))
+        return min(MAX_SWITCH_DURATION, max(MIN_SWITCH_DURATION, (NOMINAL_SWITCH_DURATION * abs(distance) / nominalDistanceScaled).toLong()))
     }
 
     /**
@@ -565,7 +506,7 @@ open class DragLinearLayout @JvmOverloads constructor(context: Context, attrs: A
                 if (INVALID_POINTER_ID == activePointerId) return false
                 val y = event.y
                 val dy = y - downY
-                if (Math.abs(dy) > slop) {
+                if (abs(dy) > slop) {
                     startDrag()
                     return true
                 }
@@ -596,7 +537,7 @@ open class DragLinearLayout @JvmOverloads constructor(context: Context, attrs: A
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        when (MotionEventCompat.getActionMasked(event)) {
+        when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 if (!draggedItem.detecting || draggedItem.settling()) return false
                 startDrag()
@@ -607,7 +548,7 @@ open class DragLinearLayout @JvmOverloads constructor(context: Context, attrs: A
                 if (INVALID_POINTER_ID == activePointerId) return false
 
                 val pointerIndex = event.findPointerIndex(activePointerId)
-                val lastEventY = MotionEventCompat.getY(event, pointerIndex).toInt()
+                val lastEventY = event.getY(pointerIndex).toInt()
                 val deltaY = lastEventY - downY
 
                 onDrag(deltaY)
@@ -615,8 +556,8 @@ open class DragLinearLayout @JvmOverloads constructor(context: Context, attrs: A
             }
             MotionEvent.ACTION_POINTER_UP -> {
                 run {
-                    val pointerIndex = MotionEventCompat.getActionIndex(event)
-                    val pointerId = MotionEventCompat.getPointerId(event, pointerIndex)
+                    val pointerIndex = event.actionIndex
+                    val pointerId = event.getPointerId(pointerIndex)
 
                     if (pointerId != activePointerId)
                         return false // if active pointer, fall through and cancel!
@@ -653,7 +594,8 @@ open class DragLinearLayout @JvmOverloads constructor(context: Context, attrs: A
     private inner class DragHandleOnTouchListener(private val view: View) : OnTouchListener {
 
         override fun onTouch(v: View, event: MotionEvent): Boolean {
-            if (MotionEvent.ACTION_DOWN == MotionEventCompat.getActionMasked(event)) {
+            view.performClick()
+            if (MotionEvent.ACTION_DOWN == event.actionMasked) {
                 startDetectingDrag(view)
             }
             return false
@@ -688,9 +630,9 @@ open class DragLinearLayout @JvmOverloads constructor(context: Context, attrs: A
          * By Ken Perlin. See [Smoothstep - Wikipedia](http://en.wikipedia.org/wiki/Smoothstep).
          */
         private fun smootherStep(edge1: Float, edge2: Float, `val`: Float): Float {
-            var `val` = `val`
-            `val` = Math.max(0f, Math.min((`val` - edge1) / (edge2 - edge1), 1f))
-            return `val` * `val` * `val` * (`val` * (`val` * 6 - 15) + 10)
+            var value = `val`
+            value = max(0f, min((value - edge1) / (edge2 - edge1), 1f))
+            return value * value * value * (value * (value * 6 - 15) + 10)
         }
 
         /**

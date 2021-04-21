@@ -6,10 +6,6 @@
         <value>3000</value>
     </entry>
     <entry>
-        <key>enableGiftOneGetOne</key>
-        <value>false</value>
-    </entry>
-    <entry>
         <key>shopSpriteSuffix</key>
     </entry>
     <entry>
@@ -47,6 +43,62 @@
     <entry>
         <key>flipAddTaskBehaviour</key>
         <value>true</value>
+    </entry>
+    <entry>
+        <key>insufficientGemPurchase</key>
+        <value>false</value>
+    </entry>
+    <entry>
+        <key>showSubscriptionBanner</key>
+        <value>false</value>
+    </entry>
+    <entry>
+        <key>showSubscriptionSubtitle</key>
+        <value>false</value>
+    </entry>
+    <entry>
+        <key>minimumPasswordLength</key>
+        <value>8</value>
+    </entry>
+    <entry>
+        <key>useNewMysteryBenefits</key>
+        <value>false</value>
+    </entry>
+    <entry>
+        <key>insufficientGemPurchaseAdjust</key>
+        <value>false</value>
+    </entry>
+    <entry>
+        <key>raiseShops</key>
+        <value>false</value>
+    </entry>
+    <entry>
+        <key>enableTaskDisplayMode</key>
+        <value>true</value>
+    </entry>
+    <entry>
+        <key>reorderMenu</key>
+        <value>false</value>
+    </entry>
+    <entry>
+        <key>feedbackURL</key>
+        <value />
+    </entry>
+    <entry>
+        <key>enableAdventureGuide</key>
+        <value>false</value>
+    </entry>
+    <entry>
+        <key>activePromo</key>
+        <value> </value>
+    </entry>
+    <entry>
+        <key>knownIssues</key>
+        <value>[]</value>
+    </entry>
+    <entry>
+        <key>enableTeamBoards</key>
+        <value>false</value>
     </entry>
 </defaultsMap>
     <!-- END xml_defaults -->

@@ -8,40 +8,41 @@ import androidx.recyclerview.widget.RecyclerView
 import com.habitrpg.android.habitica.R
 import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.ChallengeRepository
+import com.habitrpg.android.habitica.data.SocialRepository
 import com.habitrpg.android.habitica.data.UserRepository
-import com.habitrpg.android.habitica.extensions.inflate
+import com.habitrpg.android.habitica.databinding.FragmentChallengeslistBinding
 import com.habitrpg.android.habitica.helpers.MainNavigationController
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.models.social.Challenge
-import com.habitrpg.android.habitica.models.user.User
+import com.habitrpg.android.habitica.models.social.Group
 import com.habitrpg.android.habitica.modules.AppModule
 import com.habitrpg.android.habitica.ui.adapter.social.ChallengesListViewAdapter
 import com.habitrpg.android.habitica.ui.fragments.BaseFragment
-import com.habitrpg.android.habitica.ui.helpers.RecyclerViewEmptySupport
 import com.habitrpg.android.habitica.ui.helpers.SafeDefaultItemAnimator
-import com.habitrpg.android.habitica.ui.helpers.bindView
-import com.habitrpg.android.habitica.ui.helpers.resetViews
 import com.habitrpg.android.habitica.utils.Action1
-import io.reactivex.Flowable
-import io.reactivex.functions.Consumer
+import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.kotlin.Flowables
 import io.realm.RealmResults
 import javax.inject.Inject
 import javax.inject.Named
 
 
-class ChallengeListFragment : BaseFragment(), androidx.swiperefreshlayout.widget.SwipeRefreshLayout.OnRefreshListener {
+class ChallengeListFragment : BaseFragment<FragmentChallengeslistBinding>(), androidx.swiperefreshlayout.widget.SwipeRefreshLayout.OnRefreshListener {
 
     @Inject
     lateinit var challengeRepository: ChallengeRepository
     @Inject
+    lateinit var socialRepository: SocialRepository
+    @Inject
     lateinit var userRepository: UserRepository
     @field:[Inject Named(AppModule.NAMED_USER_ID)]
     lateinit var userId: String
-    var user: User? = null
 
-    private val swipeRefreshLayout: androidx.swiperefreshlayout.widget.SwipeRefreshLayout? by bindView(R.id.refreshLayout)
-    private val recyclerView: RecyclerViewEmptySupport? by bindView(R.id.recyclerView)
-    private val emptyView: View? by bindView(R.id.emptyView)
+    override var binding: FragmentChallengeslistBinding? = null
+
+    override fun createBinding(inflater: LayoutInflater, container: ViewGroup?): FragmentChallengeslistBinding {
+        return FragmentChallengeslistBinding.inflate(inflater, container, false)
+    }
 
     private var challengeAdapter: ChallengesListViewAdapter? = null
     private var viewUserChallengesOnly: Boolean = false
@@ -50,6 +51,7 @@ class ChallengeListFragment : BaseFragment(), androidx.swiperefreshlayout.widget
     private var loadedAllData = false
 
     private var challenges: RealmResults<Challenge>? = null
+    private var filterGroups: MutableList<Group>? = null
 
     private var filterOptions: ChallengeFilterOptions? = null
 
@@ -62,38 +64,34 @@ class ChallengeListFragment : BaseFragment(), androidx.swiperefreshlayout.widget
         super.onDestroy()
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View? {
-        super.onCreateView(inflater, container, savedInstanceState)
-        return container?.inflate(R.layout.fragment_challengeslist)
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        resetViews()
-
-        challengeAdapter = ChallengesListViewAdapter(null, true, viewUserChallengesOnly, userId)
-        challengeAdapter?.getOpenDetailFragmentFlowable()?.subscribe(Consumer { openDetailFragment(it) }, RxErrorHandler.handleEmptyError())
+        challengeAdapter = ChallengesListViewAdapter(viewUserChallengesOnly, userId)
+        challengeAdapter?.getOpenDetailFragmentFlowable()?.subscribe({ openDetailFragment(it) }, RxErrorHandler.handleEmptyError())
                 ?.let { compositeSubscription.add(it) }
 
-        swipeRefreshLayout?.setOnRefreshListener(this)
+        binding?.refreshLayout?.setOnRefreshListener(this)
 
-        recyclerView?.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this.activity)
-        recyclerView?.adapter = challengeAdapter
+        binding?.recyclerView?.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this.activity)
+        binding?.recyclerView?.adapter = challengeAdapter
         if (!viewUserChallengesOnly) {
-            this.recyclerView?.setBackgroundResource(R.color.white)
+            binding?.recyclerView?.setBackgroundResource(R.color.content_background)
         }
 
-        compositeSubscription.add(userRepository.getUser().subscribe(Consumer { this.user = it}, RxErrorHandler.handleEmptyError()))
+        compositeSubscription.add(Flowables.combineLatest(socialRepository.getGroup(Group.TAVERN_ID), socialRepository.getUserGroups("guild")).subscribe({
+            this.filterGroups = mutableListOf()
+            filterGroups?.add(it.first)
+            filterGroups?.addAll(it.second)
+        }, RxErrorHandler.handleEmptyError()))
 
-        recyclerView?.setEmptyView(emptyView)
-        recyclerView?.itemAnimator = SafeDefaultItemAnimator()
+        binding?.recyclerView?.setEmptyView(binding?.emptyView)
+        binding?.recyclerView?.itemAnimator = SafeDefaultItemAnimator()
 
         challengeAdapter?.updateUnfilteredData(challenges)
         loadLocalChallenges()
 
-        recyclerView?.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+        binding?.recyclerView?.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                 super.onScrollStateChanged(recyclerView, newState)
 
@@ -119,17 +117,17 @@ class ChallengeListFragment : BaseFragment(), androidx.swiperefreshlayout.widget
     }
 
     private fun setRefreshing(state: Boolean) {
-        swipeRefreshLayout?.isRefreshing = state
+        binding?.refreshLayout?.isRefreshing = state
     }
 
     private fun loadLocalChallenges() {
-        val observable: Flowable<RealmResults<Challenge>> = if (viewUserChallengesOnly && user != null) {
-            challengeRepository.getUserChallenges(user?.id ?: "")
+        val observable: Flowable<RealmResults<Challenge>> = if (viewUserChallengesOnly) {
+            challengeRepository.getUserChallenges()
         } else {
             challengeRepository.getChallenges()
         }
 
-        compositeSubscription.add(observable.firstElement().subscribe(Consumer { challenges ->
+        compositeSubscription.add(observable.subscribe({ challenges ->
             if (challenges.size == 0) {
                 retrieveChallengesPage()
             }
@@ -139,13 +137,13 @@ class ChallengeListFragment : BaseFragment(), androidx.swiperefreshlayout.widget
     }
 
     internal fun retrieveChallengesPage(forced: Boolean = false) {
-        if ((!forced && swipeRefreshLayout?.isRefreshing == true) || loadedAllData) {
+        if ((!forced && binding?.refreshLayout?.isRefreshing == true) || loadedAllData || !this::challengeRepository.isInitialized) {
             return
         }
         setRefreshing(true)
         compositeSubscription.add(challengeRepository.retrieveChallenges(nextPageToLoad, viewUserChallengesOnly).doOnComplete {
             setRefreshing(false)
-        } .subscribe(Consumer {
+        } .subscribe({
             if (it.size < 10) {
                 loadedAllData = true
             }
@@ -156,7 +154,7 @@ class ChallengeListFragment : BaseFragment(), androidx.swiperefreshlayout.widget
     internal fun showFilterDialog() {
         activity?.let {
             ChallengeFilterDialogHolder.showDialog(it,
-                    challenges ?: emptyList(),
+                    filterGroups ?: emptyList(),
                     filterOptions, object : Action1<ChallengeFilterOptions> {
                 override fun call(t: ChallengeFilterOptions) {
                     changeFilter(t)

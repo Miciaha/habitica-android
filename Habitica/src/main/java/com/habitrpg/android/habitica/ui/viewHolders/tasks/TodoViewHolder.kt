@@ -8,30 +8,30 @@ import com.habitrpg.android.habitica.models.tasks.Task
 
 import java.text.DateFormat
 
-class TodoViewHolder(itemView: View, scoreTaskFunc: ((Task, TaskDirection) -> Unit), scoreChecklistItemFunc: ((Task, ChecklistItem) -> Unit), openTaskFunc: ((Task) -> Unit)) : ChecklistedViewHolder(itemView, scoreTaskFunc, scoreChecklistItemFunc, openTaskFunc) {
+class TodoViewHolder(itemView: View, scoreTaskFunc: ((Task, TaskDirection) -> Unit), scoreChecklistItemFunc: ((Task, ChecklistItem) -> Unit), openTaskFunc: ((Task) -> Unit), brokenTaskFunc: ((Task) -> Unit)) : ChecklistedViewHolder(itemView, scoreTaskFunc, scoreChecklistItemFunc, openTaskFunc, brokenTaskFunc) {
 
     private val dateFormatter: DateFormat = android.text.format.DateFormat.getDateFormat(context)
 
-    override fun bind(newTask: Task, position: Int) {
-        this.task = newTask
-        if (newTask.completed) {
-            checklistIndicatorWrapper.setBackgroundColor(taskGray)
-        } else {
-            checklistIndicatorWrapper.setBackgroundColor(newTask.lightTaskColor)
-        }
-        super.bind(newTask, position)
+    override fun bind(data: Task, position: Int, displayMode: String) {
+        this.task = data
+        setChecklistIndicatorBackgroundActive(data.isChecklistDisplayActive)
+        reminderTextView.visibility = View.GONE
+        this.streakTextView.visibility = View.GONE
+        super.bind(data, position, displayMode)
     }
 
     override fun configureSpecialTaskTextView(task: Task) {
+        super.configureSpecialTaskTextView(task)
         if (task.dueDate != null) {
-            this.specialTaskTextView?.text = dateFormatter.format(task.dueDate)
+            task.dueDate?.let { specialTaskTextView?.text = dateFormatter.format(it) }
             this.specialTaskTextView?.visibility = View.VISIBLE
+            calendarIconView?.visibility = View.VISIBLE
         } else {
             this.specialTaskTextView?.visibility = View.INVISIBLE
         }
     }
 
-    override fun shouldDisplayAsActive(newTask: Task): Boolean {
-        return !newTask.completed
+    override fun shouldDisplayAsActive(newTask: Task?): Boolean {
+        return newTask?.completed != true
     }
 }

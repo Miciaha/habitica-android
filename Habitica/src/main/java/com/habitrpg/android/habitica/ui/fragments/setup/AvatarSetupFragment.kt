@@ -1,39 +1,30 @@
 package com.habitrpg.android.habitica.ui.fragments.setup
 
-import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.ImageView
 import android.widget.RelativeLayout
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.tabs.TabLayout
 import com.habitrpg.android.habitica.R
 import com.habitrpg.android.habitica.components.UserComponent
 import com.habitrpg.android.habitica.data.InventoryRepository
 import com.habitrpg.android.habitica.data.SetupCustomizationRepository
 import com.habitrpg.android.habitica.data.UserRepository
-import com.habitrpg.android.habitica.extensions.inflate
+import com.habitrpg.android.habitica.databinding.FragmentSetupAvatarBinding
 import com.habitrpg.android.habitica.extensions.subscribeWithErrorHandler
 import com.habitrpg.android.habitica.models.SetupCustomization
 import com.habitrpg.android.habitica.models.user.User
-import com.habitrpg.android.habitica.ui.AvatarView
-import com.habitrpg.android.habitica.ui.SpeechBubbleView
 import com.habitrpg.android.habitica.ui.activities.SetupActivity
 import com.habitrpg.android.habitica.ui.adapter.setup.CustomizationSetupAdapter
 import com.habitrpg.android.habitica.ui.fragments.BaseFragment
-import com.habitrpg.android.habitica.ui.helpers.bindOptionalView
-import com.habitrpg.android.habitica.ui.helpers.resetViews
 import com.habitrpg.android.habitica.ui.views.setup.AvatarCategoryView
-import io.reactivex.functions.Consumer
 import java.util.*
 import javax.inject.Inject
 
-class AvatarSetupFragment : BaseFragment() {
+class AvatarSetupFragment : BaseFragment<FragmentSetupAvatarBinding>() {
 
     @Inject
     lateinit var customizationRepository: SetupCustomizationRepository
@@ -41,22 +32,17 @@ class AvatarSetupFragment : BaseFragment() {
     lateinit var userRepository: UserRepository
     @Inject
     lateinit var inventoryRepository: InventoryRepository
-    
+
+    override var binding: FragmentSetupAvatarBinding? = null
+
+    override fun createBinding(inflater: LayoutInflater, container: ViewGroup?): FragmentSetupAvatarBinding {
+        return FragmentSetupAvatarBinding.inflate(inflater, container, false)
+    }
+
     var activity: SetupActivity? = null
     var width: Int = 0
-    private val avatarView: AvatarView? by bindOptionalView(R.id.avatarView)
-    private val customizationList: RecyclerView? by bindOptionalView(R.id.customization_list)
-    private val subCategoryTabs: TabLayout? by bindOptionalView(R.id.subcategory_tabs)
-    private val bodyButton: AvatarCategoryView? by bindOptionalView(R.id.body_button)
-    private val skinButton: AvatarCategoryView? by bindOptionalView(R.id.skin_button)
-    private val hairButton: AvatarCategoryView? by bindOptionalView(R.id.hair_button)
-    private val extrasButton: AvatarCategoryView? by bindOptionalView(R.id.extras_button)
-    private val caretView: ImageView? by bindOptionalView(R.id.caret_view)
-    private val speechBubbleView: SpeechBubbleView? by bindOptionalView(R.id.speech_bubble)
-    private val randomizeButton: Button? by bindOptionalView(R.id.randomize_button)
 
     internal var adapter: CustomizationSetupAdapter? = null
-    internal var layoutManager: LinearLayoutManager = LinearLayoutManager(activity)
 
     private var user: User? = null
     private var subcategories: List<String> = emptyList()
@@ -65,29 +51,22 @@ class AvatarSetupFragment : BaseFragment() {
     private var activeSubCategory: String? = null
     private var random = Random()
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        super.onCreateView(inflater, container, savedInstanceState)
-        return container?.inflate(R.layout.fragment_setup_avatar)
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        resetViews()
-
         this.adapter = CustomizationSetupAdapter()
         this.adapter?.userSize = this.user?.preferences?.size ?: "slim"
-        adapter?.updateUserEvents?.flatMap { userRepository.updateUser(user, it) }?.subscribeWithErrorHandler(Consumer {})?.let { compositeSubscription.add(it) }
-        adapter?.equipGearEvents?.flatMap { inventoryRepository.equip(user, "equipped", it) }?.subscribeWithErrorHandler(Consumer {})?.let { compositeSubscription.add(it) }
+        adapter?.updateUserEvents?.flatMap { userRepository.updateUser(it) }?.subscribeWithErrorHandler {}?.let { compositeSubscription.add(it) }
+        adapter?.equipGearEvents?.flatMap { inventoryRepository.equip(user, "equipped", it) }?.subscribeWithErrorHandler {}?.let { compositeSubscription.add(it) }
 
         this.adapter?.user = this.user
-        this.layoutManager = LinearLayoutManager(activity)
-        this.layoutManager.orientation = LinearLayoutManager.HORIZONTAL
-        this.customizationList?.layoutManager = this.layoutManager
+        val layoutManager = LinearLayoutManager(activity)
+        layoutManager.orientation = LinearLayoutManager.HORIZONTAL
+        binding?.customizationDrawer?.binding?.customizationList?.layoutManager = layoutManager
 
-        this.customizationList?.adapter = this.adapter
+        binding?.customizationDrawer?.binding?.customizationList?.adapter = this.adapter
 
-        this.subCategoryTabs?.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 val position = tab.position
                 if (position < subcategories.size) {
@@ -96,20 +75,16 @@ class AvatarSetupFragment : BaseFragment() {
                 loadCustomizations()
             }
 
-            override fun onTabUnselected(tab: TabLayout.Tab) {
+            override fun onTabUnselected(tab: TabLayout.Tab) { /* no-on */ }
 
-            }
-
-            override fun onTabReselected(tab: TabLayout.Tab) {
-
-            }
+            override fun onTabReselected(tab: TabLayout.Tab) { /* no-on */ }
         })
 
-        bodyButton?.setOnClickListener { selectedBodyCategory() }
-        skinButton?.setOnClickListener { selectedSkinCategory() }
-        hairButton?.setOnClickListener { selectedHairCategory() }
-        extrasButton?.setOnClickListener { selectedExtrasCategory() }
-        randomizeButton?.setOnClickListener { randomizeCharacter() }
+        binding?.customizationDrawer?.binding?.bodyButton?.setOnClickListener { selectedBodyCategory() }
+        binding?.customizationDrawer?.binding?.skinButton?.setOnClickListener { selectedSkinCategory() }
+        binding?.customizationDrawer?.binding?.hairButton?.setOnClickListener { selectedHairCategory() }
+        binding?.customizationDrawer?.binding?.extrasButton?.setOnClickListener { selectedExtrasCategory() }
+        binding?.randomizeButton?.setOnClickListener { randomizeCharacter() }
 
         this.selectedBodyCategory()
 
@@ -118,10 +93,14 @@ class AvatarSetupFragment : BaseFragment() {
         }
     }
 
-    override fun setUserVisibleHint(isVisibleToUser: Boolean) {
-        super.setUserVisibleHint(isVisibleToUser)
-        if (isVisibleToUser && context != null) {
-            speechBubbleView?.animateText(context?.getString(R.string.avatar_setup_description) ?: "")
+    override fun onResume() {
+        super.onResume()
+        if (this.user != null) {
+            this.updateAvatar()
+        }
+        this.selectedBodyCategory()
+        if (context != null) {
+            binding?.speechBubble?.animateText(context?.getString(R.string.avatar_setup_description) ?: "")
         }
     }
 
@@ -138,75 +117,75 @@ class AvatarSetupFragment : BaseFragment() {
 
     fun setUser(user: User?) {
         this.user = user
-        if (avatarView != null) {
+        if (binding?.avatarView != null) {
             updateAvatar()
         }
         if (this.adapter != null) {
             this.adapter?.user = user
             this.adapter?.notifyDataSetChanged()
+            loadCustomizations()
         }
     }
 
     private fun updateAvatar() {
         user?.let {
-            avatarView?.setAvatar(it)
+            binding?.avatarView?.setAvatar(it)
         }
     }
 
-
     private fun selectedBodyCategory() {
-        activateButton(bodyButton)
-        this.activeCategory = "body"
-        this.subCategoryTabs?.removeAllTabs()
-        this.subcategories = Arrays.asList("size", "shirt")
-        subCategoryTabs?.newTab()?.setText(R.string.avatar_size)?.let { this.subCategoryTabs?.addTab(it) }
-        subCategoryTabs?.newTab()?.setText(R.string.avatar_shirt)?.let { this.subCategoryTabs?.addTab(it) }
+        activateButton(binding?.customizationDrawer?.binding?.bodyButton)
+        this.activeCategory = SetupCustomizationRepository.CATEGORY_BODY
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.removeAllTabs()
+        this.subcategories = listOf(SetupCustomizationRepository.SUBCATEGORY_SIZE, SetupCustomizationRepository.SUBCATEGORY_SHIRT)
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.newTab()?.setText(R.string.avatar_size)?.let { binding?.customizationDrawer?.binding?.subcategoryTabs?.addTab(it) }
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.newTab()?.setText(R.string.avatar_shirt)?.let { binding?.customizationDrawer?.binding?.subcategoryTabs?.addTab(it) }
         loadCustomizations()
     }
 
     private fun selectedSkinCategory() {
-        activateButton(skinButton)
-        this.activeCategory = "skin"
-        this.subCategoryTabs?.removeAllTabs()
-        this.subcategories = listOf("color")
-        subCategoryTabs?.newTab()?.setText(R.string.avatar_skin_color)?.let { this.subCategoryTabs?.addTab(it) }
+        activateButton(binding?.customizationDrawer?.binding?.skinButton)
+        this.activeCategory = SetupCustomizationRepository.CATEGORY_SKIN
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.removeAllTabs()
+        this.subcategories = listOf(SetupCustomizationRepository.SUBCATEGORY_COLOR)
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.newTab()?.setText(R.string.avatar_skin_color)?.let { binding?.customizationDrawer?.binding?.subcategoryTabs?.addTab(it) }
         loadCustomizations()
     }
 
     private fun selectedHairCategory() {
-        activateButton(hairButton)
-        this.activeCategory = "hair"
-        this.subCategoryTabs?.removeAllTabs()
-        this.subcategories = Arrays.asList("bangs", "color", "ponytail")
-        subCategoryTabs?.newTab()?.setText(R.string.avatar_hair_bangs)?.let { this.subCategoryTabs?.addTab(it) }
-        subCategoryTabs?.newTab()?.setText(R.string.avatar_hair_color)?.let { this.subCategoryTabs?.addTab(it) }
-        subCategoryTabs?.newTab()?.setText(R.string.avatar_hair_ponytail)?.let { this.subCategoryTabs?.addTab(it) }
+        activateButton(binding?.customizationDrawer?.binding?.hairButton)
+        this.activeCategory = SetupCustomizationRepository.CATEGORY_HAIR
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.removeAllTabs()
+        this.subcategories = listOf(SetupCustomizationRepository.SUBCATEGORY_BANGS, SetupCustomizationRepository.SUBCATEGORY_COLOR, SetupCustomizationRepository.SUBCATEGORY_PONYTAIL)
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.newTab()?.setText(R.string.avatar_hair_bangs)?.let { binding?.customizationDrawer?.binding?.subcategoryTabs?.addTab(it) }
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.newTab()?.setText(R.string.avatar_hair_color)?.let { binding?.customizationDrawer?.binding?.subcategoryTabs?.addTab(it) }
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.newTab()?.setText(R.string.avatar_hair_ponytail)?.let { binding?.customizationDrawer?.binding?.subcategoryTabs?.addTab(it) }
         loadCustomizations()
     }
 
     private fun selectedExtrasCategory() {
-        activateButton(extrasButton)
-        this.activeCategory = "extras"
-        this.subCategoryTabs?.removeAllTabs()
-        this.subcategories = Arrays.asList("glasses", "flower", "wheelchair")
-        subCategoryTabs?.newTab()?.setText(R.string.avatar_glasses)?.let { this.subCategoryTabs?.addTab(it) }
-        subCategoryTabs?.newTab()?.setText(R.string.avatar_flower)?.let { this.subCategoryTabs?.addTab(it) }
-        subCategoryTabs?.newTab()?.setText(R.string.avatar_wheelchair)?.let { this.subCategoryTabs?.addTab(it) }
+        activateButton(binding?.customizationDrawer?.binding?.extrasButton)
+        this.activeCategory = SetupCustomizationRepository.CATEGORY_EXTRAS
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.removeAllTabs()
+        this.subcategories = listOf(SetupCustomizationRepository.SUBCATEGORY_GLASSES, SetupCustomizationRepository.SUBCATEGORY_FLOWER, SetupCustomizationRepository.SUBCATEGORY_WHEELCHAIR)
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.newTab()?.setText(R.string.avatar_glasses)?.let { binding?.customizationDrawer?.binding?.subcategoryTabs?.addTab(it) }
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.newTab()?.setText(R.string.avatar_flower)?.let { binding?.customizationDrawer?.binding?.subcategoryTabs?.addTab(it) }
+        binding?.customizationDrawer?.binding?.subcategoryTabs?.newTab()?.setText(R.string.avatar_wheelchair)?.let { binding?.customizationDrawer?.binding?.subcategoryTabs?.addTab(it) }
         loadCustomizations()
     }
 
     private fun randomizeCharacter() {
         val user = this.user ?: return
         val updateData = HashMap<String, Any>()
-        updateData["preferences.size"] = chooseRandomKey(customizationRepository.getCustomizations("body", "size", user), false)
-        updateData["preferences.shirt"] = chooseRandomKey(customizationRepository.getCustomizations("body", "shirt", user), false)
-        updateData["preferences.skin"] = chooseRandomKey(customizationRepository.getCustomizations("skin", "color", user), false)
-        updateData["preferences.hair.color"] = chooseRandomKey(customizationRepository.getCustomizations("hair", "color", user), false)
-        updateData["preferences.hair.base"] = chooseRandomKey(customizationRepository.getCustomizations("hair", "ponytail", user), false)
-        updateData["preferences.hair.bangs"] = chooseRandomKey(customizationRepository.getCustomizations("hair", "bangs", user), false)
-        updateData["preferences.hair.flower"] = chooseRandomKey(customizationRepository.getCustomizations("extras", "flower", user), true)
-        updateData["preferences.chair"] = chooseRandomKey(customizationRepository.getCustomizations("extras", "wheelchair", user), true)
-        compositeSubscription.add(userRepository.updateUser(user, updateData).subscribeWithErrorHandler(Consumer {}))
+        updateData["preferences.size"] = chooseRandomKey(customizationRepository.getCustomizations(SetupCustomizationRepository.CATEGORY_BODY, SetupCustomizationRepository.SUBCATEGORY_SIZE, user), false)
+        updateData["preferences.shirt"] = chooseRandomKey(customizationRepository.getCustomizations(SetupCustomizationRepository.CATEGORY_BODY, SetupCustomizationRepository.SUBCATEGORY_SHIRT, user), false)
+        updateData["preferences.skin"] = chooseRandomKey(customizationRepository.getCustomizations(SetupCustomizationRepository.CATEGORY_SKIN, SetupCustomizationRepository.SUBCATEGORY_COLOR, user), false)
+        updateData["preferences.hair.color"] = chooseRandomKey(customizationRepository.getCustomizations(SetupCustomizationRepository.CATEGORY_HAIR, SetupCustomizationRepository.SUBCATEGORY_COLOR, user), false)
+        updateData["preferences.hair.base"] = chooseRandomKey(customizationRepository.getCustomizations(SetupCustomizationRepository.CATEGORY_HAIR, SetupCustomizationRepository.SUBCATEGORY_PONYTAIL, user), false)
+        updateData["preferences.hair.bangs"] = chooseRandomKey(customizationRepository.getCustomizations(SetupCustomizationRepository.CATEGORY_HAIR, SetupCustomizationRepository.SUBCATEGORY_BANGS, user), false)
+        updateData["preferences.hair.flower"] = chooseRandomKey(customizationRepository.getCustomizations(SetupCustomizationRepository.CATEGORY_EXTRAS, SetupCustomizationRepository.SUBCATEGORY_FLOWER, user), true)
+        updateData["preferences.chair"] = chooseRandomKey(customizationRepository.getCustomizations(SetupCustomizationRepository.CATEGORY_EXTRAS, SetupCustomizationRepository.SUBCATEGORY_WHEELCHAIR, user), true)
+        compositeSubscription.add(userRepository.updateUser(updateData).subscribeWithErrorHandler({}))
     }
 
     @Suppress("ReturnCount")
@@ -229,16 +208,13 @@ class AvatarSetupFragment : BaseFragment() {
         this.activeButton = button
         this.activeButton?.setActive(true)
         val location = IntArray(2)
-        val params = this.caretView?.layoutParams as? RelativeLayout.LayoutParams
+        val params = binding?.customizationDrawer?.binding?.caretView?.layoutParams as? RelativeLayout.LayoutParams
         this.activeButton?.getLocationOnScreen(location)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-            val r = resources
-            val px = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 40f, r.displayMetrics).toInt()
-            params?.marginStart = location[0] + px
-            this.caretView?.layoutParams = params
-        } else {
-            caretView?.visibility = View.GONE
-        }
-
+        val r = resources
+        val px = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 40f, r.displayMetrics).toInt()
+        params?.marginStart = location[0] + px
+        binding?.customizationDrawer?.binding?.caretView?.layoutParams = params
     }
+
+
 }

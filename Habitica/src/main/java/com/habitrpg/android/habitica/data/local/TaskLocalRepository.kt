@@ -4,8 +4,9 @@ import com.habitrpg.android.habitica.models.tasks.RemindersItem
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.models.tasks.TaskList
 import com.habitrpg.android.habitica.models.tasks.TasksOrder
-import io.reactivex.Flowable
-import io.reactivex.Maybe
+import com.habitrpg.android.habitica.models.user.User
+import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.core.Maybe
 import io.realm.RealmResults
 
 interface TaskLocalRepository : BaseLocalRepository {
@@ -33,4 +34,6 @@ interface TaskLocalRepository : BaseLocalRepository {
     fun updateTaskPositions(taskOrder: List<String>)
     fun saveCompletedTodos(userId: String, tasks: MutableCollection<Task>)
     fun getErroredTasks(userID: String): Flowable<RealmResults<Task>>
+    fun getUser(userID: String): Flowable<User>
+    fun getTasksForChallenge(challengeID: String?, userID: String?): Flowable<RealmResults<Task>>
 }

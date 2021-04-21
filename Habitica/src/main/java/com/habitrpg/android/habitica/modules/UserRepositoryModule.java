@@ -65,7 +65,6 @@ public class UserRepositoryModule {
     }
 
     @Provides
-    @UserScope
     TaskRepository providesTaskRepository(TaskLocalRepository localRepository, ApiClient apiClient, @Named(AppModule.NAMED_USER_ID) String userId, AppConfigManager appConfigManager) {
         return new TaskRepositoryImpl(localRepository, apiClient, userId, appConfigManager);
     }
@@ -112,7 +111,7 @@ public class UserRepositoryModule {
 
     @Provides
     InventoryLocalRepository providesInventoryLocalRepository(Realm realm, Context context) {
-        return new RealmInventoryLocalRepository(realm, context);
+        return new RealmInventoryLocalRepository(realm);
     }
 
     @Provides

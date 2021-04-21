@@ -8,8 +8,7 @@ import androidx.preference.PreferenceCategory
 import com.habitrpg.android.habitica.HabiticaBaseApplication
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.models.user.User
-import io.reactivex.Flowable
-import io.reactivex.functions.Consumer
+import io.reactivex.rxjava3.core.Flowable
 
 class ProfilePreferencesFragment: BasePreferencesFragment(), SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -55,35 +54,32 @@ class ProfilePreferencesFragment: BasePreferencesFragment(), SharedPreferences.O
         val profileCategory = findPreference("profile") as? PreferenceCategory
         configurePreference(profileCategory?.findPreference(key), sharedPreferences?.getString(key, ""))
         if (sharedPreferences != null) {
-            val newValue = sharedPreferences.getString(key, "") ?: ""
+            val newValue = sharedPreferences.getString(key, "") ?: return
             val observable: Flowable<User>? = when (key) {
                 "display_name" -> {
                     if (newValue != user?.profile?.name) {
-                        userRepository.updateUser(user, "profile.name", newValue)
+                        userRepository.updateUser("profile.name", newValue)
                     } else {
                         null
                     }
                 }
                 "photo_url" -> {
-                    val newName = sharedPreferences.getString(key, "") ?: ""
-                    if (newName != user?.profile?.imageUrl) {
-                        userRepository.updateUser(user, "profile.imageUrl", newValue)
+                    if (newValue != user?.profile?.imageUrl) {
+                        userRepository.updateUser("profile.imageUrl", newValue)
                     } else {
                         null
                     }
                 }
                 "about" -> {
-                    val newName = sharedPreferences.getString(key, "") ?: ""
-                    if (newName != user?.profile?.blurb) {
-                        userRepository.updateUser(user, "profile.blurb", newValue)
+                    if (newValue != user?.profile?.blurb) {
+                        userRepository.updateUser("profile.blurb", newValue)
                     } else {
                         null
                     }
                 }
                 else -> null
             }
-            observable?.subscribe(Consumer {}, RxErrorHandler.handleEmptyError())?.let { compositeSubscription.add(it) }
+            observable?.subscribe({}, RxErrorHandler.handleEmptyError())?.let { compositeSubscription.add(it) }
         }
     }
-
 }

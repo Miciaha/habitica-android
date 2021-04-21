@@ -5,7 +5,7 @@
     <item android:state_pressed="true" >
         <shape android:shape="rectangle">
             <solid
-                android:color="@color/brand_500" >
+                android:color="@color/brand_700" >
             </solid>
             <corners
                 android:radius="8dp">
@@ -16,7 +16,7 @@
     <item android:state_focused="true" >
         <shape android:shape="rectangle">
             <solid
-                android:color="@color/brand_400">
+                android:color="@color/brand_500">
             </solid>
             <corners
                 android:radius="8dp">
@@ -26,7 +26,7 @@
     <item android:state_enabled="false">
         <shape android:shape="rectangle">
             <solid
-                android:color="@color/gray_200">
+                android:color="@color/inverted_background_offset">
             </solid>
             <corners
                 android:radius="8dp">
@@ -36,7 +36,7 @@
     <item>
         <shape android:shape="rectangle">
             <solid
-                android:color="@color/brand_300">
+                android:color="@color/color_accent">
             </solid>
             <corners
                 android:radius="8dp">

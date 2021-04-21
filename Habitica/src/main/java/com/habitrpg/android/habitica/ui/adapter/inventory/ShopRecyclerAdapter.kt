@@ -1,17 +1,16 @@
 package com.habitrpg.android.habitica.ui.adapter.inventory
 
 import android.content.Context
-import android.text.Html
 import android.text.method.LinkMovementMethod
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
 import com.habitrpg.android.habitica.R
-import com.habitrpg.android.habitica.ui.helpers.bindView
+import com.habitrpg.android.habitica.databinding.ShopHeaderBinding
+import com.habitrpg.android.habitica.extensions.fromHtml
 import com.habitrpg.android.habitica.extensions.inflate
 import com.habitrpg.android.habitica.helpers.MainNavigationController
-import com.habitrpg.android.habitica.models.inventory.Item
 import com.habitrpg.android.habitica.models.shops.Shop
 import com.habitrpg.android.habitica.models.shops.ShopCategory
 import com.habitrpg.android.habitica.models.shops.ShopItem
@@ -19,7 +18,6 @@ import com.habitrpg.android.habitica.models.user.OwnedItem
 import com.habitrpg.android.habitica.models.user.User
 import com.habitrpg.android.habitica.ui.viewHolders.SectionViewHolder
 import com.habitrpg.android.habitica.ui.viewHolders.ShopItemViewHolder
-import com.habitrpg.android.habitica.ui.views.NPCBannerView
 
 
 class ShopRecyclerAdapter : androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
@@ -84,18 +82,9 @@ class ShopRecyclerAdapter : androidx.recyclerview.widget.RecyclerView.Adapter<an
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): androidx.recyclerview.widget.RecyclerView.ViewHolder =
             when (viewType) {
-                0 -> {
-                    val view = parent.inflate(R.layout.shop_header)
-                    ShopHeaderViewHolder(view)
-                }
-                1 -> {
-                    val view = parent.inflate(R.layout.shop_section_header)
-                    SectionViewHolder(view)
-                }
-                2 -> {
-                    val view = parent.inflate(emptyViewResource)
-                    EmptyStateViewHolder(view)
-                }
+                0 -> ShopHeaderViewHolder(parent)
+                1 -> SectionViewHolder(parent.inflate(R.layout.shop_section_header))
+                2 -> EmptyStateViewHolder(parent.inflate(emptyViewResource))
                 else -> {
                     val view = parent.inflate(R.layout.row_shopitem)
                     val viewHolder = ShopItemViewHolder(view)
@@ -104,6 +93,7 @@ class ShopRecyclerAdapter : androidx.recyclerview.widget.RecyclerView.Adapter<an
                 }
             }
 
+    @Suppress("ReturnCount")
     override fun onBindViewHolder(holder: androidx.recyclerview.widget.RecyclerView.ViewHolder, position: Int) {
         val obj = getItem(position)
         if (obj != null) {
@@ -123,7 +113,7 @@ class ShopRecyclerAdapter : androidx.recyclerview.widget.RecyclerView.Adapter<an
                                     selectedGearCategory = gearCategories[holder.selectedItem].identifier
                                 }
                             }
-                            if (user?.stats?.habitClass != category?.identifier) {
+                            if (user?.stats?.habitClass != category?.identifier && category?.identifier != "none") {
                                 sectionHolder.notesView?.text = context.getString(R.string.class_gear_disclaimer)
                                 sectionHolder.notesView?.visibility = View.VISIBLE
                             } else {
@@ -138,9 +128,9 @@ class ShopRecyclerAdapter : androidx.recyclerview.widget.RecyclerView.Adapter<an
                 ShopItem::class.java -> {
                     val item = obj as? ShopItem ?: return
                     val itemHolder = holder as? ShopItemViewHolder ?: return
-                    itemHolder.bind(item, item.canAfford(user))
-                    if (ownedItems.containsKey(item.key+"-"+item.pinType)) {
-                        itemHolder.itemCount = ownedItems[item.key+"-"+item.pinType]?.numberOwned ?: 0
+                    itemHolder.bind(item, item.canAfford(user, 1))
+                    ownedItems[item.key+"-"+item.purchaseType]?.let {
+                        itemHolder.itemCount = it.numberOwned
                     }
                     itemHolder.isPinned = pinnedItemKeys.contains(item.key)
                 }
@@ -220,30 +210,27 @@ class ShopRecyclerAdapter : androidx.recyclerview.widget.RecyclerView.Adapter<an
         this.notifyDataSetChanged()
     }
 
-    internal class ShopHeaderViewHolder(itemView: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(itemView) {
-
-        private val descriptionView: TextView by bindView(itemView, R.id.descriptionView)
-        private val npcBannerView: NPCBannerView by bindView(itemView, R.id.npcBannerView)
-        private val namePlate: TextView by bindView(itemView, R.id.namePlate)
+    internal class ShopHeaderViewHolder(parent: ViewGroup) : androidx.recyclerview.widget.RecyclerView.ViewHolder(parent.inflate(R.layout.shop_header)) {
+        private val binding = ShopHeaderBinding.bind(itemView)
 
         init {
-            descriptionView.movementMethod = LinkMovementMethod.getInstance()
+            binding.descriptionView.movementMethod = LinkMovementMethod.getInstance()
         }
 
         fun bind(shop: Shop, shopSpriteSuffix: String) {
-            npcBannerView.shopSpriteSuffix = shopSpriteSuffix
-            npcBannerView.identifier = shop.identifier
+            binding.npcBannerView.shopSpriteSuffix = shopSpriteSuffix
+            binding.npcBannerView.identifier = shop.identifier
 
-            @Suppress("DEPRECATION")
-            descriptionView.text = Html.fromHtml(shop.notes)
-            namePlate.setText(shop.npcNameResource)
+            binding.descriptionView.text = shop.notes.fromHtml()
+            binding.namePlate.setText(shop.npcNameResource)
         }
 
     }
 
     class EmptyStateViewHolder(view: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view) {
-        private val subscribeButton: Button? by bindView(itemView, R.id.subscribeButton)
-        private val textView: TextView? by bindView(itemView, R.id.textView)
+        private val subscribeButton: Button? = itemView.findViewById(R.id.subscribeButton)
+        private val textView: TextView? = itemView.findViewById(R.id.textView)
+
         init {
             subscribeButton?.setOnClickListener { MainNavigationController.navigate(R.id.gemPurchaseActivity) }
         }

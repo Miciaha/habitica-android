@@ -4,9 +4,7 @@ import com.habitrpg.android.habitica.models.social.Challenge
 import com.habitrpg.android.habitica.models.social.ChallengeMembership
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.models.tasks.TaskList
-import com.habitrpg.android.habitica.models.user.User
-
-import io.reactivex.Flowable
+import io.reactivex.rxjava3.core.Flowable
 import io.realm.RealmResults
 
 interface ChallengeRepository : BaseRepository {
@@ -33,7 +31,7 @@ interface ChallengeRepository : BaseRepository {
                         addedTaskList: List<Task>, updatedTaskList: List<Task>, removedTaskList: List<String>): Flowable<Challenge>
 
     fun deleteChallenge(challengeId: String): Flowable<Void>
-    fun getUserChallenges(userId: String): Flowable<RealmResults<Challenge>>
+    fun getUserChallenges(userId: String? = null): Flowable<RealmResults<Challenge>>
 
 
     fun leaveChallenge(challenge: Challenge, keepTasks: String): Flowable<Void>

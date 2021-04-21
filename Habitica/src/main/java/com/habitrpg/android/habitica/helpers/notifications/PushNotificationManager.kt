@@ -3,13 +3,12 @@ package com.habitrpg.android.habitica.helpers.notifications
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.google.firebase.iid.FirebaseInstanceId
+import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.RemoteMessage
 import com.habitrpg.android.habitica.data.ApiClient
 import com.habitrpg.android.habitica.helpers.AmplitudeManager
 import com.habitrpg.android.habitica.helpers.RxErrorHandler
 import com.habitrpg.android.habitica.models.user.User
-import io.reactivex.functions.Consumer
 import java.util.*
 
 class PushNotificationManager(var apiClient: ApiClient, private val sharedPreferences: SharedPreferences, private val context: Context) {
@@ -31,40 +30,37 @@ class PushNotificationManager(var apiClient: ApiClient, private val sharedPrefer
         this.user = user
     }
 
-    //@TODO: Use preferences
     fun addPushDeviceUsingStoredToken() {
-        if (this.refreshedToken.isEmpty()) {
-            this.refreshedToken = FirebaseInstanceId.getInstance().token ?: ""
-        }
+        FirebaseMessaging.getInstance().token.addOnCompleteListener {
+            if (!it.isSuccessful) {
+                return@addOnCompleteListener
+            }
+            this.refreshedToken = it.result
+            if (this.refreshedToken.isEmpty() || this.user == null || this.userHasPushDevice() || !this.userIsSubscribedToNotifications()) {
+                return@addOnCompleteListener
+            }
 
-        if (this.refreshedToken.isEmpty() || this.user == null || this.userHasPushDevice() || !this.userIsSubscribedToNotifications()) {
-            return
+            val pushDeviceData = HashMap<String, String>()
+            pushDeviceData["regId"] = this.refreshedToken
+            pushDeviceData["type"] = "android"
+            apiClient.addPushDevice(pushDeviceData).subscribe({ }, RxErrorHandler.handleEmptyError())
         }
-
-        val pushDeviceData = HashMap<String, String>()
-        pushDeviceData["regId"] = this.refreshedToken
-        pushDeviceData["type"] = "android"
-        apiClient.addPushDevice(pushDeviceData).subscribe(Consumer { }, RxErrorHandler.handleEmptyError())
     }
 
     fun removePushDeviceUsingStoredToken() {
         if (this.refreshedToken.isEmpty()) {
             return
         }
-        apiClient.deletePushDevice(this.refreshedToken).subscribe(Consumer { }, RxErrorHandler.handleEmptyError())
+        apiClient.deletePushDevice(this.refreshedToken).subscribe({ }, RxErrorHandler.handleEmptyError())
     }
 
     private fun userHasPushDevice(): Boolean {
-        if (this.user?.pushDevices == null) {
-            return true
-        }
-
         for (pushDevice in this.user?.pushDevices ?: emptyList()) {
             if (pushDevice.regId == this.refreshedToken) {
                 return true
             }
         }
-        return false
+        return this.user?.pushDevices == null
     }
 
     fun displayNotification(remoteMessage: RemoteMessage) {
@@ -78,7 +74,7 @@ class PushNotificationManager(var apiClient: ApiClient, private val sharedPrefer
             additionalData["identifier"] = remoteMessageIdentifier ?: ""
             AmplitudeManager.sendEvent("receive notification", AmplitudeManager.EVENT_CATEGORY_BEHAVIOUR, AmplitudeManager.EVENT_HITTYPE_EVENT, additionalData)
             notification.setExtras(remoteMessage.data)
-            notification.notifyLocally(remoteMessage.data["title"], remoteMessage.data["body"])
+            notification.notifyLocally(remoteMessage.data["title"], remoteMessage.data["body"], remoteMessage.data)
         }
     }
 
@@ -88,8 +84,6 @@ class PushNotificationManager(var apiClient: ApiClient, private val sharedPrefer
 
     private fun userIsSubscribedToNotificationType(type: String?): Boolean {
         var key = ""
-
-        //@TODO: If user has push turned off to send
 
         if (type == null) {
             return true
@@ -110,7 +104,6 @@ class PushNotificationManager(var apiClient: ApiClient, private val sharedPrefer
     }
 
     companion object {
-
         const val PARTY_INVITE_PUSH_NOTIFICATION_KEY = "invitedParty"
         const val RECEIVED_PRIVATE_MESSAGE_PUSH_NOTIFICATION_KEY = "newPM"
         const val RECEIVED_GEMS_PUSH_NOTIFICATION_KEY = "giftedGems"
@@ -122,6 +115,8 @@ class PushNotificationManager(var apiClient: ApiClient, private val sharedPrefer
         const val CHANGE_USERNAME_PUSH_NOTIFICATION_KEY = "changeUsername"
         const val GIFT_ONE_GET_ONE_PUSH_NOTIFICATION_KEY = "gift1get1"
         const val CHAT_MENTION_NOTIFICATION_KEY = "chatMention"
+        const val GROUP_ACTIVITY_NOTIFICATION_KEY = "groupActivity"
+        const val G1G1_PROMO_KEY = "g1g1Promo"
         private const val DEVICE_TOKEN_PREFERENCE_KEY = "device-token-preference"
     }
 }

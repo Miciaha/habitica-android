@@ -5,16 +5,15 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.Build.VERSION.SDK_INT
-import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import com.habitrpg.android.habitica.data.TaskRepository
 import com.habitrpg.android.habitica.models.tasks.RemindersItem
 import com.habitrpg.android.habitica.models.tasks.Task
 import com.habitrpg.android.habitica.receivers.NotificationPublisher
 import com.habitrpg.android.habitica.receivers.TaskReceiver
-import io.reactivex.Flowable
-import io.reactivex.functions.Consumer
+import com.habitrpg.shared.habitica.HLogger
+import com.habitrpg.shared.habitica.LogLevel
+import io.reactivex.rxjava3.core.Flowable
 import java.util.*
 
 class TaskAlarmManager(private var context: Context, private var taskRepository: TaskRepository, private var userId: String) {
@@ -48,21 +47,18 @@ class TaskAlarmManager(private var context: Context, private var taskRepository:
         taskRepository.getTaskCopy(taskId)
                 .filter { task -> task.isValid && task.isManaged && Task.TYPE_DAILY == task.type }
                 .firstElement()
-                .subscribe(Consumer { this.setAlarmsForTask(it) }, RxErrorHandler.handleEmptyError())
+                .subscribe({ this.setAlarmsForTask(it) }, RxErrorHandler.handleEmptyError())
     }
 
     fun scheduleAllSavedAlarms(preventDailyReminder: Boolean) {
         taskRepository.getTaskCopies(userId)
                 .firstElement()
                 .toFlowable()
-                .flatMap<Task> { Flowable.fromIterable(it) }
-                .subscribe(Consumer { this.setAlarmsForTask(it) }, RxErrorHandler.handleEmptyError())
+                .flatMap { Flowable.fromIterable(it) }
+                .subscribe({ this.setAlarmsForTask(it) }, RxErrorHandler.handleEmptyError())
 
         if (!preventDailyReminder) {
             scheduleDailyReminder(context)
-        }
-        PreferenceManager.getDefaultSharedPreferences(context).edit {
-            putLong("lastReminderSchedule", Date().time)
         }
     }
 
@@ -168,17 +164,16 @@ class TaskAlarmManager(private var context: Context, private var taskRepository:
         }
 
         private fun setAlarm(context: Context, time: Long, pendingIntent: PendingIntent?) {
+            HLogger.log(LogLevel.INFO, "TaskAlarmManager", "Scheduling for $time")
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
 
             if (pendingIntent == null) {
                 return
             }
 
-            if (SDK_INT < Build.VERSION_CODES.KITKAT) {
-                alarmManager?.set(AlarmManager.RTC_WAKEUP, time, pendingIntent)
-            } else if (Build.VERSION_CODES.KITKAT <= SDK_INT && SDK_INT < Build.VERSION_CODES.M) {
-                alarmManager?.setWindow(AlarmManager.RTC_WAKEUP, time, time + 60000, pendingIntent)
-            } else if (SDK_INT >= Build.VERSION_CODES.M) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+                alarmManager?.setWindow(AlarmManager.RTC_WAKEUP, time, 60000, pendingIntent)
+            } else {
                 alarmManager?.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pendingIntent)
             }
         }

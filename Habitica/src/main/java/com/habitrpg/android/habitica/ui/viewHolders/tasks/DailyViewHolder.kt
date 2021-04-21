@@ -1,16 +1,13 @@
 package com.habitrpg.android.habitica.ui.viewHolders.tasks
 
 import android.view.View
-import android.widget.TextView
-import com.habitrpg.android.habitica.R
 import com.habitrpg.android.habitica.models.responses.TaskDirection
 import com.habitrpg.android.habitica.models.tasks.ChecklistItem
 import com.habitrpg.android.habitica.models.tasks.Task
-import com.habitrpg.android.habitica.ui.helpers.bindView
+import java.text.DateFormat
+import java.util.*
 
-class DailyViewHolder(itemView: View, scoreTaskFunc: ((Task, TaskDirection) -> Unit), scoreChecklistItemFunc: ((Task, ChecklistItem) -> Unit), openTaskFunc: ((Task) -> Unit)) : ChecklistedViewHolder(itemView, scoreTaskFunc, scoreChecklistItemFunc, openTaskFunc) {
-
-    private val streakTextView: TextView by bindView(itemView, R.id.streakTextView)
+class DailyViewHolder(itemView: View, scoreTaskFunc: ((Task, TaskDirection) -> Unit), scoreChecklistItemFunc: ((Task, ChecklistItem) -> Unit), openTaskFunc: ((Task) -> Unit), brokenTaskFunc: ((Task) -> Unit)) : ChecklistedViewHolder(itemView, scoreTaskFunc, scoreChecklistItemFunc, openTaskFunc, brokenTaskFunc) {
 
     override val taskIconWrapperIsVisible: Boolean
         get() {
@@ -21,18 +18,37 @@ class DailyViewHolder(itemView: View, scoreTaskFunc: ((Task, TaskDirection) -> U
             return isVisible
         }
 
-    override fun bind(newTask: Task, position: Int) {
-        this.task = newTask
-        if (newTask.isChecklistDisplayActive) {
-            this.checklistIndicatorWrapper.setBackgroundResource(newTask.lightTaskColor)
+    override fun bind(data: Task, position: Int, displayMode: String) {
+        this.task = data
+        setChecklistIndicatorBackgroundActive(data.isChecklistDisplayActive)
+
+        if (data.reminders?.size == 0) {
+            reminderTextView.visibility = View.GONE
         } else {
-            this.checklistIndicatorWrapper.setBackgroundColor(this.taskGray)
+            reminderTextView.visibility = View.VISIBLE
+            val now = Date()
+            val calendar = Calendar.getInstance()
+            val nextReminder = data.reminders?.firstOrNull {
+                calendar.time = now
+                calendar.set(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DATE), it.time?.hours ?: 0, it.time?.minutes ?: 0, 0)
+                now < calendar.time
+            } ?: data.reminders?.first()
+
+            var reminderString = ""
+            if (nextReminder?.time != null) {
+                reminderString += formatter.format(nextReminder.time)
+            }
+            if ((data.reminders?.size ?: 0) > 1) {
+                reminderString = "$reminderString (+${(data.reminders?.size ?: 0)-1})"
+            }
+            reminderTextView.text = reminderString
         }
-        super.bind(newTask, position)
+
+        super.bind(data, position, displayMode)
     }
 
-    override fun shouldDisplayAsActive(newTask: Task): Boolean {
-        return newTask.isDisplayedActive
+    override fun shouldDisplayAsActive(newTask: Task?): Boolean {
+        return newTask?.isDisplayedActive ?: false
     }
 
     override fun configureSpecialTaskTextView(task: Task) {
@@ -40,8 +56,17 @@ class DailyViewHolder(itemView: View, scoreTaskFunc: ((Task, TaskDirection) -> U
         if (task.streak ?: 0 > 0) {
             this.streakTextView.text = task.streak.toString()
             this.streakTextView.visibility = View.VISIBLE
+            this.streakIconView.visibility = View.VISIBLE
         } else {
             this.streakTextView.visibility = View.GONE
+            this.streakIconView.visibility = View.GONE
         }
+    }
+
+    companion object {
+        private val formatter: DateFormat
+            get() {
+                return DateFormat.getTimeInstance(DateFormat.SHORT)
+            }
     }
 }
